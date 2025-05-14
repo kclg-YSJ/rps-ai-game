@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ G DIFF <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,10 @@
             <div id="level-select-container">
                 <!-- Levels will be populated by JS -->
             </div>
-            <button id="unlock-all-btn" title="一键解锁所有关卡 (后门)">🔑</button>
+            <div class="main-menu-buttons">
+                <button id="unlock-all-btn" title="一键解锁所有关卡 (后门)">🔑 解锁全部</button>
+                <button id="clear-all-data-btn" title="清除所有游戏记录和解锁状态">🧹 清除记录</button>
+            </div>
         </div>
 
         <div id="game-screen" class="screen">
@@ -25,7 +28,8 @@
             
             <div id="ai-info">
                 <p id="ai-name">AI名称</p>
-                <p id="ai-description">AI描述</p>
+                <p id="ai-description">AI描述 (更隐晦)</p>
+                <p id="current-boss-rule-display" style="display:none; font-weight: bold; color: var(--danger-color);"></p> {/* Added for Boss rule name */}
                 <button id="hint-btn">查看提示</button>
             </div>
 
@@ -47,16 +51,15 @@
 
                 <div class="ai-area">
                     <h3>AI的选择</h3>
-                    <!-- AI's choice will be shown here, initially hidden for some AIs -->
                     <div id="ai-choice-display" class="move-display">?</div>
                 </div>
             </div>
             
-            <div id="game-stats">
+            <div id="game-stats"> 
                 <p>回合: <span id="current-round">0</span> / <span id="total-rounds">0</span></p>
                 <p>胜: <span id="wins-count">0</span> | 平: <span id="ties-count">0</span> | 负: <span id="losses-count">0</span></p>
                 <p id="win-condition-text">过关条件: N/A</p>
-                <p id="current-rules-display" style="display:none;"></p> <!-- For Level 4-2 -->
+                <p id="current-rules-display" style="display:none;"></p>
             </div>
 
             <div id="history-panel">
@@ -73,7 +76,8 @@
             <div class="modal-content">
                 <h2 id="modal-title">关卡完成!</h2>
                 <p id="modal-message">你成功了!</p>
-                <p id="modal-score">你的得分: 胜 <span id="modal-wins">0</span>, 平 <span id="modal-ties">0</span>, 负 <span id="modal-losses">0</span></p>
+                <p id="modal-score">得分: 胜 <span id="modal-wins">0</span>, 平 <span id="modal-ties">0</span>, 负 <span id="modal-losses">0</span></p>
+                <p id="modal-time-taken">用时: <span id="time-taken-value">--</span></p> 
                 <button id="next-level-btn">下一关</button>
                 <button id="replay-level-btn">再玩一次</button>
                 <button class="modal-close-btn">返回主菜单</button>
@@ -83,7 +87,7 @@
         <div id="hint-modal" class="modal">
             <div class="modal-content">
                 <h2>提示</h2>
-                <p id="hint-text-content">这是提示内容。</p>
+                <p id="hint-text-content">这是提示内容。</p> 
                 <button class="modal-close-btn">关闭</button>
             </div>
         </div>
