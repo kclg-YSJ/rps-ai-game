@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const levelTitleEl = document.getElementById('level-title');
     const aiNameEl = document.getElementById('ai-name');
     const aiDescriptionEl = document.getElementById('ai-description');
-    const currentBossRuleDisplay = document.getElementById('current-boss-rule-display'); // Added
+    const currentBossRuleDisplay = document.getElementById('current-boss-rule-display');
     const hintBtn = document.getElementById('hint-btn');
     const backToMenuBtn = document.getElementById('back-to-menu-btn');
     
@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ruleChangeCounter: 0, 
                     currentRuleAiKey: null,
                     currentRuleAiFn: null,
-                    currentRuleAiName: null, // Added to store name for display
+                    currentRuleAiName: null, 
                     timerActive: false,
                     availableAiKeys: Object.keys(aiFunctions).filter(key => key !== "4-4" && key !== "5-1") 
                 };
@@ -413,10 +413,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 bossState.currentRuleAiKey = newAiKey;
                 bossState.currentRuleAiFn = aiFunctions[newAiKey];
                 const subAiLevelConfig = levels.find(l => l.id === newAiKey);
-                bossState.currentRuleAiName = subAiLevelConfig ? subAiLevelConfig.name : `规则 (${newAiKey})`; // Store name
+                bossState.currentRuleAiName = subAiLevelConfig ? subAiLevelConfig.name : `规则 (${newAiKey})`; 
                 
-                // console.log(`Boss changed rule to AI: ${newAiKey} (${bossState.currentRuleAiName})`);
-                currentBossRuleDisplay.textContent = `当前AI规则: ${bossState.currentRuleAiName}`; // Update display
+                currentBossRuleDisplay.textContent = `当前AI规则: ${bossState.currentRuleAiName}`; 
                 currentBossRuleDisplay.style.display = 'block';
                 
                 gameData.aiState.subAiState = {}; 
@@ -660,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             id: "5-1", chapter: "第五章：最终挑战", name: "千面智械", 
             description: "终极考验，集大成之作。", 
-            hint: "终极Boss！它会从之前所有AI（除了历史复현者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
+            hint: "终极Boss！它会从之前所有AI（除了历史复现者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
             totalRounds: 300, 
             winCondition: (s) => s.wins >= 200,
             winText: "300局200胜",
@@ -685,33 +684,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${minutes}分 ${seconds.toString().padStart(2, '0')}秒`;
     }
 
+    // CORRECTED FUNCTION
     function resetLevelsToInitial() {
-        levels = JSON.parse(JSON.stringify(initialLevels)).map(level => ({ 
-            ...level, 
-            unlocked: false, 
-            bestScore: null, 
-            played: false 
+        // Create new level objects based on initialLevels, preserving function references
+        levels = initialLevels.map(initialLevel => ({
+            ...initialLevel, // This correctly spreads the original 'ai' function
+            unlocked: false,  // Default unlocked state
+            bestScore: null,  // Default best score
+            played: false     // Default played state
         }));
-        if (levels.length > 0) levels[0].unlocked = true;
+        // Ensure the first level is always unlocked by default
+        if (levels.length > 0) {
+            levels[0].unlocked = true;
+        }
     }
 
 
     function loadProgress() {
         const savedLevels = localStorage.getItem('rpsGameLevels');
-        resetLevelsToInitial(); 
+        resetLevelsToInitial(); // This now correctly populates `levels` with functions.
 
         if (savedLevels) {
-            const parsedLevels = JSON.parse(savedLevels);
-            levels.forEach((level, index) => {
+            const parsedLevels = JSON.parse(savedLevels); // These `parsedLevels` from localStorage WON'T have 'ai' functions.
+            levels.forEach((level, index) => { // Iterate over the `levels` array that *does* have functions.
                 const savedLevel = parsedLevels.find(sl => sl.id === level.id);
                 if (savedLevel) {
+                    // We are only updating 'unlocked', 'bestScore', 'played' from 'savedLevel'.
+                    // The 'ai' function on `levels[index]` (which is `level`) remains intact from `resetLevelsToInitial`.
                     levels[index].unlocked = savedLevel.unlocked;
                     levels[index].bestScore = savedLevel.bestScore === null ? null : { ...savedLevel.bestScore };
                     levels[index].played = savedLevel.played || (savedLevel.bestScore !== null); 
                 }
             });
         }
-        if (levels.length > 0 && !levels[0].unlocked) {
+        if (levels.length > 0 && !levels[0].unlocked) { // Ensure first level is unlocked if somehow missed
             levels[0].unlocked = true;
         }
 
@@ -817,8 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
         timerDisplay.style.display = 'none';
         currentRulesDisplay.style.display = 'none';
         currentRulesDisplay.textContent = '';
-        currentBossRuleDisplay.style.display = 'none'; // Reset boss rule display
-        currentBossRuleDisplay.textContent = '';       // Reset boss rule display text
+        currentBossRuleDisplay.style.display = 'none'; 
+        currentBossRuleDisplay.textContent = '';       
         
         playerChoiceDisplay.textContent = '?';
         aiChoiceDisplay.textContent = '?';
@@ -845,15 +851,12 @@ document.addEventListener('DOMContentLoaded', () => {
             roundResultText.textContent = 'VS'; 
         }
         
-        // Handle Boss rule display on level start
         if (levelConfig.id === "5-1") {
-            // Boss AI will set its initial rule and name when it's first called in handlePlayerChoice
-            // or if its state is already populated from a previous attempt in this session
-            // So, here we just ensure it's hidden if no rule name is yet available in bossLogic
             if (gameData.aiState.bossLogic && gameData.aiState.bossLogic.currentRuleAiName) {
                  currentBossRuleDisplay.textContent = `当前AI规则: ${gameData.aiState.bossLogic.currentRuleAiName}`;
                  currentBossRuleDisplay.style.display = 'block';
             } else {
+                // Boss AI will set this when its logic runs for the first time in handlePlayerChoice
                 currentBossRuleDisplay.style.display = 'none'; 
             }
         } else {
@@ -919,6 +922,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameInputDisabled) return;
 
         const levelConfig = levels[currentLevelIndex];
+        if (!levelConfig || typeof levelConfig.ai !== 'function') { // Added safety check
+            console.error("Error: levelConfig or levelConfig.ai is not properly defined.", levelConfig);
+            alert("发生了一个严重错误，请尝试刷新或清除数据。");
+            return;
+        }
+
         if (gameData.currentRound >= levelConfig.totalRounds) return; 
 
         if (levelConfig.featureFlags?.bossTimer && bossTimerInterval) {
@@ -947,7 +956,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentRulesDisplay.style.display = 'none';
         }
-        // For Boss关卡, AI function (5-1) handles updating currentBossRuleDisplay itself when rules change.
 
         const result = determineWinner(playerMove, aiMove, currentRulesForThisTurn);
 
