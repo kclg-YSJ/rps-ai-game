@@ -20,13 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameData = {
         playerMoveHistory: [],
         aiMoveHistory: [],
-        resultHistory: [], // {playerMove, aiMove, result, (tamperedText for 4-3)}
+        resultHistory: [], 
         currentRound: 0,
         wins: 0,
         ties: 0,
         losses: 0,
-        aiState: {}, // For AI-specific persistent data within a level
-        gameLog: [] // For AI 4-4, stores {levelIndex, rounds: [{player, ai}, ...]}
+        aiState: {}, 
+        gameLog: [],
+        levelStartTime: 0, 
     };
     let bossTimerInterval = null;
     let bossTimerValue = 0;
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameScreen = document.getElementById('game-screen');
     const levelSelectContainer = document.getElementById('level-select-container');
     const unlockAllBtn = document.getElementById('unlock-all-btn');
+    const clearAllDataBtn = document.getElementById('clear-all-data-btn'); 
 
     const levelTitleEl = document.getElementById('level-title');
     const aiNameEl = document.getElementById('ai-name');
@@ -50,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roundResultText = document.getElementById('round-result-text');
     const timerDisplay = document.getElementById('timer-display');
 
+    const gameStatsEl = document.getElementById('game-stats'); 
     const currentRoundEl = document.getElementById('current-round');
     const totalRoundsEl = document.getElementById('total-rounds');
     const winsCountEl = document.getElementById('wins-count');
@@ -67,11 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalWins = document.getElementById('modal-wins');
     const modalTies = document.getElementById('modal-ties');
     const modalLosses = document.getElementById('modal-losses');
+    const timeTakenValueEl = document.getElementById('time-taken-value'); 
     const nextLevelBtn = document.getElementById('next-level-btn');
     const replayLevelBtn = document.getElementById('replay-level-btn');
     
     const hintModal = document.getElementById('hint-modal');
     const hintTextContent = document.getElementById('hint-text-content');
+
+    const currentBossRuleDisplay = document.getElementById('current-boss-rule-display');
 
     // --- Helper Functions ---
     const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -84,14 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (move === MOVES.SCISSORS) return MOVES.ROCK;
     };
 
-    const getStandardWeakness = (move) => { // Move that 'move' beats
+    const getStandardWeakness = (move) => {
         if (move === MOVES.ROCK) return MOVES.SCISSORS;
         if (move === MOVES.PAPER) return MOVES.ROCK;
         if (move === MOVES.SCISSORS) return MOVES.PAPER;
     };
     
     const determineWinner = (playerMove, aiMove, rules = null) => {
-        if (!rules) { // Standard rules
+        if (!rules) { 
             if (playerMove === aiMove) return RESULTS.TIE;
             if (
                 (playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) ||
@@ -101,28 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return RESULTS.PLAYER_WIN;
             }
             return RESULTS.AI_WIN;
-        } else { // Custom rules for Level 4-2
+        } else { 
             if (playerMove === aiMove) return RESULTS.TIE;
-            if (rules[playerMove] === aiMove) return RESULTS.PLAYER_WIN; // playerMove beats aiMove
+            if (rules[playerMove] === aiMove) return RESULTS.PLAYER_WIN; 
             return RESULTS.AI_WIN;
         }
     };
-    
-    const getCounterMoveWithRules = (move, rules) => {
-        // Find which move beats 'move' according to 'rules'
-        // rules is like {rock: 'paper', paper: 'scissors', scissors: 'rock'} where key is beaten by value
-        for (const attacker in rules) {
-            if (rules[attacker] === move) return attacker;
-        }
-        // This should not happen with valid rules
-        return getRandomElement(Object.values(MOVES)); 
-    };
 
     // --- AI Definitions ---
-    // Each AI function will take `gameData` and `levelConfig` as arguments
-    // and return the AI's move.
-    // `gameData.aiState` can be used to store AI-specific data.
-
     const aiFunctions = {
         // Chapter 1
         "1-1": (gameData, levelConfig) => { // 固执的AI
@@ -144,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameData.aiState.cycleIndex = 0;
             }
             const move = gameData.aiState.cycle[gameData.aiState.cycleIndex];
-            gameData.aiState.cycleIndex = (gameData.aiState.cycleIndex + 1) % gameData.aiS<ctrl61>tate.cycle.length;
+            gameData.aiState.cycleIndex = (gameData.aiState.cycleIndex + 1) % gameData.aiState.cycle.length;
             return move;
         },
         "1-4": (gameData, levelConfig) => { // 连击选手
@@ -189,9 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const lastPlayerMove = gameData.playerMoveHistory[gameData.playerMoveHistory.length - 1];
             const lastAiMove = gameData.aiMoveHistory[gameData.aiMoveHistory.length - 1];
             let possibleMoves = Object.values(MOVES).filter(m => m !== lastPlayerMove && m !== lastAiMove);
-            if (possibleMoves.length === 0) { // e.g. player last R, AI last P. Only S remains. If player last R, AI last R, then P,S remain
-                 possibleMoves = Object.values(MOVES).filter(m => m !== lastPlayerMove); // If conflict, prioritize differing from player
-                 if (possibleMoves.length === 0) possibleMoves = Object.values(MOVES); // Absolute fallback
+            if (possibleMoves.length === 0) { 
+                 possibleMoves = Object.values(MOVES).filter(m => m !== lastPlayerMove); 
+                 if (possibleMoves.length === 0) possibleMoves = Object.values(MOVES); 
             }
             return getRandomElement(possibleMoves);
         },
@@ -204,11 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gameData.playerMoveHistory.length >= 2) {
                 movesToCounter.push(getStandardCounterMove(gameData.playerMoveHistory[gameData.playerMoveHistory.length - 2]));
             }
-             if (movesToCounter.length === 0) return getRandomElement(Object.values(MOVES)); // Should not happen if history has moves
+             if (movesToCounter.length === 0) return getRandomElement(Object.values(MOVES));
             return getRandomElement(movesToCounter);
         },
         "2-6": (gameData, levelConfig) => { // k步棋圣
-            if (!gameData.aiState.k) {
+            if (!gameData.aiState.k && gameData.aiState.k !== 0) { // Check for undefined or null, allow k=0 if intended (though prompt says 2-5)
                  gameData.aiState.k = getRandomInt(2,5);
             }
             const k = gameData.aiState.k;
@@ -227,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const counts = { rock: 0, paper: 0, scissors: 0 };
             gameData.playerMoveHistory.forEach(move => counts[move]++);
             
-            let maxCount = 0;
+            let maxCount = -1; // Start with -1 to ensure first move is picked if all are 0
             let mostFrequentMoves = [];
             for (const move in counts) {
                 if (counts[move] > maxCount) {
@@ -237,6 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     mostFrequentMoves.push(move);
                 }
             }
+            // If all counts are 0 (e.g. history cleared for boss), or no clear most frequent, pick randomly
+            if (mostFrequentMoves.length === 0 || maxCount === 0 && mostFrequentMoves.length === 3) {
+                 return getRandomElement(Object.values(MOVES));
+            }
             const playerMostFrequent = getRandomElement(mostFrequentMoves);
             return getStandardCounterMove(playerMostFrequent);
         },
@@ -244,16 +240,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!gameData.aiState.moveWinCounts) {
                 gameData.aiState.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
             }
-            // Update counts from previous round result
-            if (gameData.resultHistory.length > 0) {
-                const lastResult = gameData.resultHistory[gameData.resultHistory.length - 1];
-                if (lastResult.result === RESULTS.AI_WIN) {
-                    gameData.aiState.moveWinCounts[lastResult.aiMove]++;
-                }
-            }
+            // Update counts from previous round result (if this AI is active)
+            // This update logic should ideally be inside the main game loop if the AI is active,
+            // or the boss needs to manage this state carefully for sub-AIs.
+            // For now, assuming this function is called each round, and if it was the active AI,
+            // its state would have been updated after the previous round.
+            // When boss switches, `subAiState.moveWinCounts` is reset.
 
             const counts = gameData.aiState.moveWinCounts;
-            let maxWins = -1;
+            let maxWins = -1; 
             let bestMoves = [];
             for (const move in counts) {
                 if (counts[move] > maxWins) {
@@ -263,7 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     bestMoves.push(move);
                 }
             }
-            if (bestMoves.length === 0 || maxWins === 0) return getRandomElement(Object.values(MOVES)); // If no wins yet or all tied at 0
+             // If no wins yet (maxWins still -1 or 0 and all are 0), or all moves tied at 0 wins, pick randomly
+            if (bestMoves.length === 0 || (maxWins <= 0 && Object.values(counts).every(c => c === 0))) {
+                return getRandomElement(Object.values(MOVES));
+            }
             return getRandomElement(bestMoves);
         },
         "3-3": (gameData, levelConfig) => { // 循环破壁者
@@ -282,18 +280,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return move;
             }
         
-            // Attempt to detect cycle
-            const history = gameData.playerMoveHistory;
-            if (history.length >= 9) { // Min length for 3 occurrences of a 3-move cycle
-                for (let len = 3; len <= 5; len++) { // Cycle length
+            const history = gameData.playerMoveHistory; // Use the full player history passed to the AI
+            if (history.length >= 9) { 
+                for (let len = 3; len <= 5; len++) { 
                     if (history.length < len * 3) continue;
         
                     const potentialCycle = history.slice(history.length - len);
-                    // Check if cycle is not all same moves
-                    if (new Set(potentialCycle).size === 1) continue;
+                    if (new Set(potentialCycle).size === 1) continue; // Cycle must not be all same moves
 
                     let occurrences = 1;
-                    for (let i = 2; i <=3; i++) { // Check for 2nd and 3rd occurrence
+                    for (let i = 2; i <=3; i++) { 
+                        if (history.length - (len * i) < 0) break; // Ensure we don't go out of bounds
                         const prevSegment = history.slice(history.length - (len * i), history.length - (len * (i-1)));
                         if (potentialCycle.every((val, index) => val === prevSegment[index])) {
                             occurrences++;
@@ -317,27 +314,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return getRandomElement(Object.values(MOVES));
         },
         "3-4": (gameData, levelConfig) => { // 概率操纵师
-            if (!gameData.aiState.netWins) { // Net wins for AI with each move
+            if (!gameData.aiState.netWins) { 
                 gameData.aiState.netWins = { rock: 0, paper: 0, scissors: 0 };
             }
-
-            // Update netWins based on last round
-            if (gameData.resultHistory.length > 0) {
-                const lastResult = gameData.resultHistory[gameData.resultHistory.length - 1];
-                const aiPlayedMove = lastResult.aiMove;
-                if (lastResult.result === RESULTS.AI_WIN) {
-                    gameData.aiState.netWins[aiPlayedMove]++;
-                } else if (lastResult.result === RESULTS.PLAYER_WIN) {
-                    gameData.aiState.netWins[aiPlayedMove]--;
-                }
-            }
+            // Similar to 3-2, netWins update should be managed by the game loop or boss for active sub-AI.
+            // When boss switches, `subAiState.netWins` is reset.
 
             const getProb = (netWin) => {
                 if (netWin <= 0) return 1/3;
                 if (netWin === 1) return 1/2;
                 if (netWin === 2) return 3/4;
                 if (netWin === 3) return 4/5;
-                return 1; // netWin >= 4
+                return 1; 
             };
 
             let probs = {
@@ -347,12 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const totalProb = probs.rock + probs.paper + probs.scissors;
-            // Normalize
-            if (totalProb > 0) { // Avoid division by zero if all somehow become 0
+            if (totalProb > 0 && totalProb !== Infinity) { // Avoid division by zero or infinity
                 probs.rock /= totalProb;
                 probs.paper /= totalProb;
                 probs.scissors /= totalProb;
-            } else { // Equal chance if totalProb is 0
+            } else { 
                 probs = { rock: 1/3, paper: 1/3, scissors: 1/3 };
             }
             
@@ -362,46 +349,41 @@ document.addEventListener('DOMContentLoaded', () => {
             return MOVES.SCISSORS;
         },
         // Chapter 4
-        "4-1": (gameData, levelConfig) => { // 失忆者
-            // Logic is same as 2-3, UI handles hiding
+        "4-1": (gameData, levelConfig) => { // 失忆者 (AI logic is: different from its own last move)
+            // The UI hiding is handled separately. AI just plays its strategy.
             if (gameData.aiMoveHistory.length === 0) return getRandomElement(Object.values(MOVES));
             const lastAiMove = gameData.aiMoveHistory[gameData.aiMoveHistory.length - 1];
             const possibleMoves = Object.values(MOVES).filter(m => m !== lastAiMove);
             return getRandomElement(possibleMoves.length > 0 ? possibleMoves : Object.values(MOVES));
         },
         "4-2": (gameData, levelConfig) => { // 规则变幻师
-            if (!gameData.aiState.rulesCycle) {
-                // Standard rules: R > S, P > R, S > P
-                // AI plays R, P, S, R, P, S...
+            if (!gameData.aiState.cycle) { // Initialize for 4-2 specifically
                 gameData.aiState.cycle = [MOVES.ROCK, MOVES.PAPER, MOVES.SCISSORS];
                 gameData.aiState.cycleIndex = 0;
-
-                // Generate a list of all possible rule permutations
-                // A rule is {rockBeats: X, paperBeats: Y, scissorsBeats: Z} where X,Y,Z are R,P,S and all different
-                // And must be a valid RPS graph (e.g., R>S, S>P, P>R or R>P, P>S, S>R)
-                // There are only 2 such valid RPS graphs.
-                const ruleSet1 = { [MOVES.ROCK]: MOVES.SCISSORS, [MOVES.PAPER]: MOVES.ROCK, [MOVES.SCISSORS]: MOVES.PAPER }; // Standard
-                const ruleSet2 = { [MOVES.ROCK]: MOVES.PAPER, [MOVES.PAPER]: MOVES.SCISSORS, [MOVES.SCISSORS]: MOVES.ROCK }; // Reversed
+                const ruleSet1 = { [MOVES.ROCK]: MOVES.SCISSORS, [MOVES.PAPER]: MOVES.ROCK, [MOVES.SCISSORS]: MOVES.PAPER }; 
+                const ruleSet2 = { [MOVES.ROCK]: MOVES.PAPER, [MOVES.PAPER]: MOVES.SCISSORS, [MOVES.SCISSORS]: MOVES.ROCK }; 
 
                 gameData.aiState.availableRuleSets = [ruleSet1, ruleSet2];
-                gameData.aiState.currentRuleSet = getRandomElement(gameData.aiState.availableRuleSets); // Initial rules
+                // Ensure first rule is set, even if no 'currentRuleSet' from a previous round (e.g. first round of level)
+                gameData.aiState.currentRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
             }
             
-            // Change rules every round, ensuring it's different from the last
             const lastRuleSet = gameData.aiState.currentRuleSet;
             let newRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
-            while (newRuleSet === lastRuleSet && gameData.aiState.availableRuleSets.length > 1) { // Ensure different if possible
+            // Ensure new rule is different if possible
+            let attempts = 0;
+            while (JSON.stringify(newRuleSet) === JSON.stringify(lastRuleSet) && gameData.aiState.availableRuleSets.length > 1 && attempts < 10) { 
                 newRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
+                attempts++;
             }
             gameData.aiState.currentRuleSet = newRuleSet;
-            levelConfig.currentRules = newRuleSet; // Make accessible for winner determination & UI
+            levelConfig.currentRules = newRuleSet; // Make accessible for winner determination & UI for THIS round
 
             const move = gameData.aiState.cycle[gameData.aiState.cycleIndex];
             gameData.aiState.cycleIndex = (gameData.aiState.cycleIndex + 1) % gameData.aiState.cycle.length;
             return move;
         },
         "4-3": (gameData, levelConfig) => { // 嘲讽篡改者
-            // AI always counters player's last move
             if (gameData.playerMoveHistory.length === 0) return getRandomElement(Object.values(MOVES));
             const lastPlayerMove = gameData.playerMoveHistory[gameData.playerMoveHistory.length - 1];
             return getStandardCounterMove(lastPlayerMove);
@@ -412,18 +394,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameData.aiState.historicCycle = [];
                 gameData.aiState.cycleIndex = 0;
 
-                const completedGames = gameData.gameLog.filter(log => log.levelIndex !== currentLevelIndex && log.rounds.length > 0);
+                // Use the global gameData.gameLog passed to the AI
+                const completedGames = gameData.gameLog.filter(log => log.levelId !== levelConfig.id && log.rounds && log.rounds.length > 0);
                 if (completedGames.length > 0) {
                     const randomPastGame = getRandomElement(completedGames);
-                    // The cycle is the AI's moves from that game
                     gameData.aiState.historicCycle = randomPastGame.rounds.map(r => r.ai); 
                 }
                 
-                if (gameData.aiState.historicCycle.length === 0) { // Fallback if no history or empty history
-                    gameData.aiState.historicCycle = Array.from({length: 5}, () => getRandomElement(Object.values(MOVES)));
+                if (gameData.aiState.historicCycle.length === 0) { 
+                    gameData.aiState.historicCycle = Array.from({length: getRandomInt(5,10)}, () => getRandomElement(Object.values(MOVES)));
                     // console.warn("AI 4-4: No suitable past game history, using random cycle.");
                 }
-                // console.log("AI 4-4: Using historic cycle:", gameData.aiState.historicCycle);
             }
 
             if (gameData.aiState.historicCycle.length === 0) return getRandomElement(Object.values(MOVES)); // Final fallback
@@ -436,105 +417,101 @@ document.addEventListener('DOMContentLoaded', () => {
         "5-1": (gameData, levelConfig) => { // Boss
             if (!gameData.aiState.bossLogic) {
                 gameData.aiState.bossLogic = {
-                    ruleChangeCounter: 0, // Will be set to 30 on first real run
+                    ruleChangeCounter: 0, 
+                    currentRuleAiKey: null,
                     currentRuleAiFn: null,
-                    currentRuleAiName: null, // For potential display or debugging
+                    currentRuleAiName: null, // Added to store name for display
                     timerActive: false,
-                    availableAis: Object.keys(aiFunctions).filter(key => key !== "4-4" && key !== "5-1") // Exclude self and history-dependent
+                    availableAiKeys: Object.keys(aiFunctions).filter(key => key !== "4-4" && key !== "5-1") 
                 };
+                gameData.aiState.subAiState = {}; 
             }
             
             const bossState = gameData.aiState.bossLogic;
-            // Change rule every 30 rounds OR if no rule is set yet
+            
             if (bossState.ruleChangeCounter % 30 === 0 || !bossState.currentRuleAiFn) {
-                const newAiKey = getRandomElement(bossState.availableAis);
+                const newAiKey = getRandomElement(bossState.availableAiKeys);
+                bossState.currentRuleAiKey = newAiKey;
                 bossState.currentRuleAiFn = aiFunctions[newAiKey];
-                bossState.currentRuleAiName = levels.find(l => l.id === newAiKey)?.name || newAiKey;
-                // console.log(`Boss changed rule to: ${bossState.currentRuleAiName}`);
-                // Reset AI state for the new sub-AI to prevent carry-over issues
-                // This assumes sub-AIs initialize their state if gameData.aiState.subAiName is undefined
-                // A more robust way would be to have a dedicated aiState field for the sub-AI
-                gameData.aiState.subAiState = {}; // Fresh state for the sub-AI
+                const subAiLevelConfig = levels.find(l => l.id === newAiKey);
+                bossState.currentRuleAiName = subAiLevelConfig ? subAiLevelConfig.name : `规则 (${newAiKey})`; // Store name
                 
-                 // When a sub-AI uses gameData.aiState, it should use gameData.aiState.subAiState
-                 // This requires modifying all AIs or passing a dedicated state object.
-                 // For simplicity here, we'll just clear the main aiState, but this is risky.
-                 // A better approach: sub-AIs get gameData and their own state object: subAI(gameData, subAiState)
-                 // For now, we will pass a modified gameData for sub-AIs
+                // console.log(`Boss changed rule to AI: ${newAiKey} (${bossState.currentRuleAiName})`);
+                currentBossRuleDisplay.textContent = `当前AI规则: ${bossState.currentRuleAiName}`; // Update display
+                currentBossRuleDisplay.style.display = 'block';
+                
+                gameData.aiState.subAiState = {}; 
+                if (newAiKey === "3-2") { 
+                    gameData.aiState.subAiState.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
+                }
+                if (newAiKey === "3-3") { 
+                    gameData.aiState.subAiState.detection = undefined; 
+                }
+                if (newAiKey === "3-4") { 
+                    gameData.aiState.subAiState.netWins = { rock: 0, paper: 0, scissors: 0 };
+                }
             }
             bossState.ruleChangeCounter++;
 
-            // Timer for last 30 rounds
-            const roundsRemaining = levelConfig.totalRounds - gameData.currentRound;
-            if (roundsRemaining <= 30 && !bossState.timerActive) {
+            // ... (rest of Boss AI logic for timer and calling sub-AI) ...
+            // (No change needed in the timer or sub-AI call part for this specific request)
+
+            const roundsRemainingInGame = levelConfig.totalRounds - gameData.currentRound;
+            if (roundsRemainingInGame <= 30 && !bossState.timerActive) {
                 bossState.timerActive = true;
-                startBossTimer(30); // Initial time for this round
+                startBossTimer(30); 
             }
-            if (bossState.timerActive && roundsRemaining < 30) { // After the first timed round
-                 // Time decreases from 30 to 5 over 30 rounds.
-                 // Max time = 30, Min time = 5. Decrease = 25 over 29 transitions (30 rounds total)
-                 // Time for round i (0-29) = 30 - (25/29)*i
-                 const roundIntoTimerPhase = 30 - roundsRemaining; // 0 to 29
-                 const newTime = Math.max(5, Math.round(30 - (25/29) * roundIntoTimerPhase));
-                 // Update timer only if it's a new round, not multiple calls within a round
-                 if (bossTimerValue !== newTime && gameData.currentRound > (levelConfig.totalRounds - 30)) {
+            if (bossState.timerActive && roundsRemainingInGame < 30 && roundsRemainingInGame >=0) { 
+                const roundIntoTimerPhase = 30 - roundsRemainingInGame; 
+                const newTime = Math.max(5, Math.round(30 - (25/29) * roundIntoTimerPhase));
+                if (bossTimerValue !== newTime && gameData.currentRound > (levelConfig.totalRounds - 30)) {
                     startBossTimer(newTime);
-                 }
+                }
             }
             
-            // Create a temporary gameData for the sub-AI to use, so its aiState doesn't clash
-            // with the boss's main aiState.
-            const subGameData = {
-                ...gameData,
-                aiState: gameData.aiState.subAiState || {} // Give it its own state object
+            const subGameDataForAI = {
+                playerMoveHistory: gameData.playerMoveHistory, 
+                aiMoveHistory: gameData.aiMoveHistory,         
+                resultHistory: gameData.resultHistory,       
+                aiState: gameData.aiState.subAiState,         
             };
-            const move = bossState.currentRuleAiFn(subGameData, levelConfig); // levelConfig might not be right for all sub-AIs
-            gameData.aiState.subAiState = subGameData.aiState; // Persist sub-AI state
+            const subAiOriginalConfig = levels.find(l => l.id === bossState.currentRuleAiKey) || levelConfig;
+
+            const move = bossState.currentRuleAiFn(subGameDataForAI, subAiOriginalConfig);
+            
+            gameData.aiState.subAiState = subGameDataForAI.aiState; 
             return move;
         }
     };
-    
-    const startBossTimer = (seconds) => {
-        clearInterval(bossTimerInterval);
-        bossTimerValue = seconds;
-        timerDisplay.textContent = `⏰ ${bossTimerValue}s`;
-        timerDisplay.style.display = 'block';
-        isGameInputDisabled = false; // Enable input at start of timer
-
-        bossTimerInterval = setInterval(() => {
-            bossTimerValue--;
+        // --- AI Definitions END ---
+        
+        const startBossTimer = (seconds) => {
+            clearInterval(bossTimerInterval);
+            bossTimerValue = seconds;
             timerDisplay.textContent = `⏰ ${bossTimerValue}s`;
-            if (bossTimerValue <= 0) {
-                clearInterval(bossTimerInterval);
-                timerDisplay.textContent = "时间到!";
-                // Player loses the round automatically
-                // This needs to be handled carefully. We can't directly call playRound.
-                // We can set a flag or make a default losing move for player.
-                // For now, disable input and player effectively forfeits.
-                // A better way: auto-submit a "timeout" move for player.
-                // For simplicity, we'll just log it as AI win, player chose nothing.
-                console.log("Boss timer ran out. Player loses round.");
-                isGameInputDisabled = true; 
-                choiceBtns.forEach(btn => btn.disabled = true);
-                // To actually process this as a loss, playRound would need to be triggered
-                // with a special player move like 'timeout'.
-                // This part is tricky to integrate smoothly without larger refactoring.
-                // For now, the player just can't make a move if timer runs out.
-                // Let's assume the player must act before timer runs out.
-                // If they don't, the game just waits for their input, but they are under pressure.
-                // This makes more sense than auto-loss, given current structure.
-            }
-        }, 1000);
+            timerDisplay.style.display = 'block';
+            isGameInputDisabled = false; 
+
+            bossTimerInterval = setInterval(() => {
+                bossTimerValue--;
+                timerDisplay.textContent = `⏰ ${bossTimerValue}s`;
+                if (bossTimerValue <= 0) {
+                    clearInterval(bossTimerInterval);
+                    timerDisplay.textContent = "时间到!";
+                    isGameInputDisabled = true; 
+                    choiceBtns.forEach(btn => btn.disabled = true);
+                    // Player must act before timer runs out.
+                }
+            }, 1000);
     };
 
-
     // --- Level Definitions ---
-    const levels = [
+    const initialLevels = [
         // Chapter 1: 新手试炼
         { 
             id: "1-1", chapter: "第一章：新手试炼", name: "固执的石头", 
-            description: "我只喜欢一种手势，你猜是哪个？", 
-            hint: "它只会出同一种手势，观察一下就知道了。",
+            description: "它似乎有特别的偏好。", 
+            hint: "这个AI只会出同一种手势，在关卡开始时随机决定是哪一种。观察几轮就能发现规律。",
             totalRounds: 5, 
             winCondition: (s) => s.wins >= 4, 
             winText: "5局4胜",
@@ -542,8 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "1-2", chapter: "第一章：新手试炼", name: "双面手", 
-            description: "我只用两种手势，不多不少。", 
-            hint: "它只会在开局随机选定的两种手势里出拳。",
+            description: "它的选择范围有限。", 
+            hint: "这个AI在开局时会随机选择两种手势，之后只会从这两种手势中出拳。",
             totalRounds: 5, 
             winCondition: (s) => (s.wins + s.ties) >= 4,
             winText: "5局4平(胜+平)",
@@ -551,8 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "1-3", chapter: "第一章：新手试炼", name: "循环的节奏", 
-            description: "石头、剪刀、布...或者其他顺序，我喜欢循环。", 
-            hint: "它的出拳顺序是一个固定的3步循环，比如剪刀-石头-布。",
+            description: "它的行动有迹可循。", 
+            hint: "这个AI会按照一个固定的3手势循环出拳，例如 石头-布-剪刀-石头... 循环的顺序是随机的。",
             totalRounds: 7, 
             winCondition: (s) => s.wins >= 5,
             winText: "7局5胜",
@@ -560,8 +537,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "1-4", chapter: "第一章：新手试炼", name: "连击选手", 
-            description: "我会连续出同一个手势几次，然后再换。", 
-            hint: "它会连续出同一个手势2到4次，然后随机换一个手势再继续连击。",
+            description: "它喜欢在一段时间内保持一致。", 
+            hint: "这个AI会连续出同一个手势几次（2到4次之间），然后随机换一个手势再继续连击。",
             totalRounds: 9, 
             winCondition: (s) => s.wins >= 6,
             winText: "9局6胜",
@@ -569,19 +546,17 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "1-5", chapter: "第一章：新手试炼", name: "长循环大师", 
-            description: "我的循环节有点长，你能找到规律吗？", 
-            hint: "它会按照一个随机长度（6-8）的循环节出拳。",
+            description: "它的模式比较复杂，需要耐心观察。", 
+            hint: "这个AI会按照一个随机长度（6到8之间）的循环节出拳。",
             totalRounds: 24, 
             winCondition: (s) => s.wins >= 16,
             winText: "24局16胜",
             ai: aiFunctions["1-5"] 
         },
-
-        // Chapter 2: 进阶之路
         { 
             id: "2-1", chapter: "第二章：进阶之路", name: "模仿者", 
-            description: "你出什么，我就出什么，简单吧？", 
-            hint: "它会模仿你上一把出的手势。",
+            description: "它似乎在学习你的行为。", 
+            hint: "这个AI会模仿你上一把出的手势。",
             totalRounds: 7, 
             winCondition: (s) => s.wins >= 6,
             winText: "7局6胜",
@@ -589,8 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "2-2", chapter: "第二章：进阶之路", name: "克制者", 
-            description: "我会专门出克制你上一把手势的拳。", 
-            hint: "小心了，它总是出克制你上一次出拳的手势。",
+            description: "它总想胜过你。", 
+            hint: "这个AI会专门出克制你上一把手势的拳。",
             totalRounds: 7, 
             winCondition: (s) => s.wins >= 6,
             winText: "7局6胜",
@@ -598,8 +573,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "2-3", chapter: "第二章：进阶之路", name: "多变者", 
-            description: "我从不连续两把出相同的手势。", 
-            hint: "它每一把出的手势都和它自己上一把出的不同。",
+            description: "它不喜欢重复自己。", 
+            hint: "这个AI每一把出的手势都和它自己上一把出的不同。",
             totalRounds: 10, 
             winCondition: (s) => (s.wins + s.ties) >= 9,
             winText: "10局9平(胜+平)",
@@ -607,8 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "2-4", chapter: "第二章：进阶之路", name: "双重否定", 
-            description: "我出的手势，既和你上一把不同，也和我自己上一把不同。", 
-            hint: "有点绕？它会避免你和它自己上一轮的手势。",
+            description: "它试图避开最近的模式。", 
+            hint: "这个AI出的手势，既和你上一把出的不同，也和它自己上一把出的不同。",
             totalRounds: 10, 
             winCondition: (s) => s.wins >= 9,
             winText: "10局9胜",
@@ -616,8 +591,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "2-5", chapter: "第二章：进阶之路", name: "克制回忆者", 
-            description: "我会随机克制你前两把中的一个手势。", 
-            hint: "它会看你前两次的出拳，然后随机选一次来克制。",
+            description: "它会参考你更早之前的选择。", 
+            hint: "这个AI会随机选择克制你前两把出拳中的一个。",
             totalRounds: 12, 
             winCondition: (s) => (s.wins + s.ties) >= 11,
             winText: "12局11平(胜+平)",
@@ -625,27 +600,26 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "2-6", chapter: "第二章：进阶之路", name: "K步棋圣", 
-            description: "我会看你很久以前的一个手势，然后决定是复制还是克制它。", 
-            hint: "开局它会随机一个2-5的数字K。之后每次出拳，它会看你倒数第K把的手势，然后随机决定是复制还是克制那个手势。",
+            description: "它会回顾你某一特定历史回合的行动。", 
+            hint: "开局时，这个AI会随机一个2到5之间的整数K。之后每次出拳，它会查看你倒数第K局（即向前第K局）的手势，然后随机决定是复制还是克制那个手势。",
             totalRounds: 24, 
             winCondition: (s) => (s.wins + s.ties) >= 19,
             winText: "24局19平(胜+平)",
             ai: aiFunctions["2-6"] 
         },
-        // Chapter 3: 策略大师
         { 
             id: "3-1", chapter: "第三章：策略大师", name: "从众者", 
-            description: "你什么出得多，我就克制什么。", 
-            hint: "它会统计你出过的所有手势，然后出克制你最常出手势的拳。如果最常出的有多个，它会随机选一个来克制。",
+            description: "它关注你的整体偏好。", 
+            hint: "这个AI会统计你到目前为止出过的所有手势，然后出克制你最常出手势的拳。如果最常出的手势有多个（数量相同），它会从中随机选择一个来克制。",
             totalRounds: 20, 
-            winCondition: (s) => (s.wins + s.ties) >= 19 && s.wins >=14 , // Special condition: 20平19胜14
-            winText: "20局, 胜+平≥19局, 且胜≥14局",
+            winCondition: (s) => (s.wins + s.ties) >= 19 && s.wins >=14 ,
+            winText: "20局, (胜+平)≥19, 且胜≥14",
             ai: aiFunctions["3-1"] 
         },
         { 
             id: "3-2", chapter: "第三章：策略大师", name: "胜者为王", 
-            description: "哪种手势让我赢得多，我就出哪种。", 
-            hint: "它会统计自己用哪种手势获胜的次数最多，然后倾向于出那种手势。如果多种手势获胜次数相同，则随机。",
+            description: "它倾向于使用成功的策略。", 
+            hint: "这个AI会统计自己用哪种手势在本关卡中获胜的次数最多，然后倾向于出那种手势。如果多种手势获胜次数相同，或者还没有用任何手势赢过，则随机出拳。",
             totalRounds: 20, 
             winCondition: (s) => (s.wins + s.ties) >= 17,
             winText: "20局17平(胜+平)",
@@ -653,8 +627,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "3-3", chapter: "第三章：策略大师", name: "循环破壁者", 
-            description: "一开始我随机出，一旦发现你的循环，哼哼...", 
-            hint: "它会尝试找到你长度为3-5的循环节（且循环节不全为同种手势）。一旦它认为找到了（即某个循环节从最新局往前至少出现了3次），就会一直出克制你循环的手势。",
+            description: "它在寻找你的习惯。", 
+            hint: "这个AI一开始会随机出拳。它会持续分析你的出拳记录，尝试找到你长度在3到5之间的循环节（并且循环节不能全是一种手势）。一旦它认为找到了（即某个循环节从最新局往前至少出现了3次），之后将一直按照克制你那个循环节的顺序循环出拳。",
             totalRounds: 24, 
             winCondition: (s) => s.wins >= 17,
             winText: "24局17胜",
@@ -662,38 +636,37 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "3-4", chapter: "第三章：策略大师", name: "概率操纵师", 
-            description: "我用某种手势赢的越多，就越爱用它。", 
-            hint: "它会根据每种手势的净胜局数（胜局-负局）来调整该手势的出拳概率。净胜0局概率1/3，1局1/2，2局3/4，3局4/5，4局及以上为1（必定出）。三种手势的概率会归一化。",
+            description: "它的自信心会影响选择。", 
+            hint: "这个AI会根据它用每种手势获得的净胜局数（胜局 - 负局）来调整该手势的出拳概率。净胜0局时基础概率1/3，净胜1局时概率变为1/2，净胜2局为3/4，净胜3局为4/5，净胜4局及以上时概率为1（即必定出该手势）。三种手势的概率会进行归一化处理。",
             totalRounds: 40, 
             winCondition: (s) => s.wins >= 20,
             winText: "40局20胜",
             ai: aiFunctions["3-4"] 
         },
-        // Chapter 4: 诡道高手
         { 
             id: "4-1", chapter: "第四章：诡道高手", name: "失忆者", 
-            description: "我...上一把出了什么来着？分数也不重要啦！", 
-            hint: "它每把出的手势和自己上一把不同。但你看不到它上一把具体出了什么，也看不到当前胜负平局数。",
+            description: "有些信息似乎被刻意隐藏了。", 
+            hint: "这个AI每一把出的手势都和它自己上一把出的不同。关键在于：你将无法看到刚刚结束的上一局AI出了什么手势、以及该局的胜负结果。同时，当前的总胜、平、负局数和总轮数信息也将被隐藏。历史记录中，也只有在更新的回合（即非刚刚结束的那一回合），信息才会完整显示。",
             totalRounds: 32, 
-            winCondition: (s) => (s.wins + s.ties) >= 24 && s.wins >=16, // 32平24胜16
-            winText: "32局, 胜+平≥24局, 且胜≥16局",
+            winCondition: (s) => (s.wins + s.ties) >= 24 && s.wins >=16, 
+            winText: "32局, (胜+平)≥24, 且胜≥16",
             ai: aiFunctions["4-1"],
-            uiModifiers: { hideLastAIMove: true, hideScores: true }
+            uiModifiers: { hideRoundInfo: true } 
         },
         { 
             id: "4-2", chapter: "第四章：诡道高手", name: "规则变幻师", 
-            description: "这把剪刀克石头！下把可能又不一样了。", 
-            hint: "它的出拳方式是固定的石头-布-剪刀循环。但是！每一把的猜拳克制规则都会变化（比如可能变成石头克布），规则一定与上一把不同。界面会显示上一局刚结束时用的规则。",
+            description: "这里的常识不一定适用。", 
+            hint: "这个AI的出拳方式是固定的石头-布-剪刀循环。但是！每一把的猜拳克制规则都会随机变化（仍然是石头、剪刀、布之间的完全克制关系，但具体谁克谁会变），并且新规则一定与上一把的规则不同。界面上会显示刚刚结束的上一局所应用的克制规则。",
             totalRounds: 30, 
-            winCondition: (s) => (s.wins + s.ties) >= 29 && s.wins >=15, // 30局29平15胜
-            winText: "30局, 胜+平≥29局, 且胜≥15局",
+            winCondition: (s) => (s.wins + s.ties) >= 29 && s.wins >=15, 
+            winText: "30局, (胜+平)≥29, 且胜≥15",
             ai: aiFunctions["4-2"],
             uiModifiers: { showPreviousRules: true }
         },
         { 
             id: "4-3", chapter: "第四章：诡道高手", name: "嘲讽篡改者", 
-            description: "你太菜了！不信你看记录，我一直赢！", 
-            hint: "它每一把都会出克制你上一把手势的拳。但它会在记录面板里说垃圾话，并“偷偷”篡改历史记录来干扰你（当然，真实的胜负局数不受影响）。",
+            description: "不要相信你看到的一切。", 
+            hint: "这个AI每一把都会出克制你上一把手势的拳。但它非常狡猾，会在记录面板里说垃圾话，并且“偷偷”篡改历史记录的显示来干扰你（当然，这不会影响到真实的胜负局数统计）。",
             totalRounds: 20, 
             winCondition: (s) => s.wins >= 19,
             winText: "20局19胜",
@@ -702,99 +675,155 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "4-4", chapter: "第四章：诡道高手", name: "历史复现者", 
-            description: "似曾相识的局面...我好像在哪见过你的套路。", 
-            hint: "它会从你之前（非本关）已完成的关卡中，随机选取一整局的AI出拳记录，作为它在本关的出拳循环节。",
+            description: "它好像在哪里见过你的套路。", 
+            hint: "这个AI会从你之前所有已通过的关卡（必须不是本关自身）的完整对局中，随机选取一整局AI当时的出拳记录，作为它在本关卡的出拳循环节。",
             totalRounds: 30, 
-            winCondition: (s) => s.wins >= 1, // 30局30胜1 (Actually, 30局1胜 is very easy, maybe it was a typo for 30局30平1胜?)
-                                           // Let's assume it is "30局中至少赢1局，并且总胜局+平局达到30", which means all rounds must be win or tie, and at least 1 win
             winCondition: (s) => s.wins >= 1 && (s.wins + s.ties) === s.totalRounds,
-            winText: "30局 (胜+平)=30局, 且胜≥1局",
+            winText: "30局, (胜+平)=30, 且胜≥1",
             ai: aiFunctions["4-4"] 
         },
-        // Chapter 5: 最终挑战
         { 
             id: "5-1", chapter: "第五章：最终挑战", name: "千面智械", 
-            description: "我，集大成者。你，能看穿我所有的伪装吗？", 
-            hint: "终极Boss！它会从之前所有AI（除了历史复现者和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。统计数据在换规则时清零。最后30轮，你还有出拳时间限制，从30秒逐渐缩减到5秒！",
+            description: "终极考验，集大成之作。", 
+            hint: "终极Boss！它会从之前所有AI（除了历史复现者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
             totalRounds: 300, 
             winCondition: (s) => s.wins >= 200,
             winText: "300局200胜",
             ai: aiFunctions["5-1"],
             featureFlags: { bossTimer: true }
         },
-    ].map(level => ({ ...level, unlocked: false, bestScore: null }));
+    ];
+
+    let levels = []; 
 
     // --- Game Logic Functions ---
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
     }
+    
+    function formatTime(milliseconds) {
+        if (milliseconds === null || typeof milliseconds === 'undefined' || milliseconds < 0) return 'N/A';
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}分 ${seconds.toString().padStart(2, '0')}秒`;
+    }
+
+    function resetLevelsToInitial() {
+        // Deep copy initialLevels to prevent modification of the template
+        levels = JSON.parse(JSON.stringify(initialLevels)).map(level => ({ 
+            ...level, 
+            unlocked: false, 
+            bestScore: null, // { wins, ties, losses, time }
+            played: false 
+        }));
+        if (levels.length > 0) levels[0].unlocked = true;
+    }
+
 
     function loadProgress() {
         const savedLevels = localStorage.getItem('rpsGameLevels');
+        resetLevelsToInitial(); // Start with default structure, then overwrite
+
         if (savedLevels) {
             const parsedLevels = JSON.parse(savedLevels);
             levels.forEach((level, index) => {
                 const savedLevel = parsedLevels.find(sl => sl.id === level.id);
                 if (savedLevel) {
                     levels[index].unlocked = savedLevel.unlocked;
-                    levels[index].bestScore = savedLevel.bestScore;
+                    // Ensure bestScore is null if saved as such, or an object
+                    levels[index].bestScore = savedLevel.bestScore === null ? null : { ...savedLevel.bestScore };
+                    levels[index].played = savedLevel.played || (savedLevel.bestScore !== null); 
                 }
             });
         }
+        // Ensure first level is always unlocked if somehow missed after loading
+        if (levels.length > 0 && !levels[0].unlocked) {
+            levels[0].unlocked = true;
+        }
+
         const savedGameLog = localStorage.getItem('rpsGameLog');
         if (savedGameLog) {
             gameData.gameLog = JSON.parse(savedGameLog);
+        } else {
+            gameData.gameLog = [];
         }
-        // First level is always unlocked
-        if (levels.length > 0) levels[0].unlocked = true;
     }
 
     function saveProgress() {
-        const levelStatesToSave = levels.map(l => ({ id: l.id, unlocked: l.unlocked, bestScore: l.bestScore }));
+        const levelStatesToSave = levels.map(l => ({ 
+            id: l.id, 
+            unlocked: l.unlocked, 
+            bestScore: l.bestScore, // Already includes time if set
+            played: l.played 
+        }));
         localStorage.setItem('rpsGameLevels', JSON.stringify(levelStatesToSave));
         localStorage.setItem('rpsGameLog', JSON.stringify(gameData.gameLog));
     }
     
-    function saveCompletedGame(levelIdx, roundsHistory) {
-        // roundsHistory should be array of {player: move, ai: move}
-        const existingLogEntry = gameData.gameLog.find(log => log.levelIndex === levelIdx);
-        if (existingLogEntry) {
-            existingLogEntry.rounds = roundsHistory;
+    function saveCompletedGame(levelConfig, roundsHistory) {
+        const existingLogEntryIndex = gameData.gameLog.findIndex(log => log.levelId === levelConfig.id);
+        const newLogEntry = { levelId: levelConfig.id, rounds: roundsHistory };
+        if (existingLogEntryIndex > -1) {
+            gameData.gameLog[existingLogEntryIndex] = newLogEntry;
         } else {
-            gameData.gameLog.push({ levelIndex: levelIdx, rounds: roundsHistory });
+            gameData.gameLog.push(newLogEntry);
         }
-        saveProgress(); // Save game log along with other progress
+        // saveProgress() will be called later, usually after endLevel
     }
 
 
     function populateLevelSelect() {
         levelSelectContainer.innerHTML = '';
         let currentChapter = "";
-        levels.forEach((level, index) => {
+        levels.forEach((level) => {
             if (level.chapter !== currentChapter) {
                 currentChapter = level.chapter;
                 const chapterHeader = document.createElement('h2');
                 chapterHeader.textContent = currentChapter;
-                chapterHeader.style.gridColumn = "1 / -1"; // Span full width
-                chapterHeader.style.marginTop = "20px";
-                chapterHeader.style.borderBottom = "1px solid var(--primary-color)";
+                chapterHeader.style.gridColumn = "1 / -1"; 
+                chapterHeader.style.marginTop = (levelSelectContainer.children.length > 0) ? "25px" : "0";
+                chapterHeader.style.marginBottom = "5px";
+                chapterHeader.style.paddingBottom = "5px";
+                chapterHeader.style.borderBottom = "2px solid var(--primary-color)";
                 chapterHeader.style.color = "var(--primary-color)";
                 levelSelectContainer.appendChild(chapterHeader);
             }
 
             const card = document.createElement('div');
             card.className = 'level-card';
-            if (!level.unlocked) card.classList.add('locked');
+            
+            // Apply status classes
+            if (!level.unlocked) {
+                card.classList.add('locked');
+            } else if (level.bestScore) { // Beaten (implies played)
+                card.classList.add('beaten');
+            } else if (level.played) { // Played but not beaten
+                card.classList.add('played-not-beaten');
+            }
+            // Default: unlocked, not played (uses base .level-card border-left)
+
+            let bestScoreHtml = '未挑战';
+            if (level.bestScore) {
+                bestScoreHtml = `胜: <strong>${level.bestScore.wins}</strong> | 平: <strong>${level.bestScore.ties}</strong> | 负: <strong>${level.bestScore.losses}</strong>`;
+                if (typeof level.bestScore.time === 'number') { // Check if time is a valid number
+                     bestScoreHtml += `<br><span class="best-time-display">最快用时: ${formatTime(level.bestScore.time)}</span>`;
+                }
+            } else if (level.played && level.unlocked) { // Played but not beaten, and unlocked
+                bestScoreHtml = '未通过';
+            }
+
+
             card.innerHTML = `
-                <h3>${level.name} (${level.id})</h3>
-                <p>${level.description.substring(0, 50)}...</p>
-                <p class="best-score">最佳: ${level.bestScore ? `胜${level.bestScore.wins} 平${level.bestScore.ties} 负${level.bestScore.losses}` : '未挑战'}</p>
+                <h3>${level.name} <span style="font-size:0.8em; color:#777;">(${level.id})</span></h3>
+                <p>${level.description}</p> 
                 <p class="win-req">要求: ${level.winText}</p>
+                <div class="best-score-display">最佳: ${bestScoreHtml}</div>
             `;
             card.addEventListener('click', () => {
                 if (level.unlocked) {
-                    startLevel(index);
+                    startLevel(levels.findIndex(l => l.id === level.id));
                 } else {
                     alert('请先完成前面的关卡！');
                 }
@@ -811,198 +840,175 @@ document.addEventListener('DOMContentLoaded', () => {
         gameData.wins = 0;
         gameData.ties = 0;
         gameData.losses = 0;
-        gameData.aiState = {}; // Crucial: reset AI state for each new level start
+        gameData.aiState = {}; 
+        gameData.levelStartTime = Date.now(); 
         isGameInputDisabled = false;
         choiceBtns.forEach(btn => btn.disabled = false);
         clearInterval(bossTimerInterval);
         timerDisplay.style.display = 'none';
         currentRulesDisplay.style.display = 'none';
         currentRulesDisplay.textContent = '';
-        // Reset UI for specific levels
-        const currentLevelConfig = levels[currentLevelIndex];
-        const hideScores = currentLevelConfig.uiModifiers?.hideScores;
-        const hideLastAIMove = currentLevelConfig.uiModifiers?.hideLastAIMove;
-
-        if (!hideScores) {
-            winsCountEl.parentElement.style.visibility = 'visible';
-            tiesCountEl.parentElement.style.visibility = 'visible';
-            lossesCountEl.parentElement.style.visibility = 'visible';
-        }
-        if (!hideLastAIMove) {
-            aiChoiceDisplay.style.visibility = 'visible';
-        }
+        currentBossRuleDisplay.style.display = 'none'; // Add this line
+        currentBossRuleDisplay.textContent = '';       // Add this line
+        
+        playerChoiceDisplay.textContent = '?';
+        aiChoiceDisplay.textContent = '?';
+        roundResultText.textContent = 'VS'; // Reset to initial VS
     }
 
     function startLevel(levelIdx) {
         currentLevelIndex = levelIdx;
         const levelConfig = levels[currentLevelIndex];
-        resetGameData(); // Reset before starting
+        resetGameData(); 
 
-        levelTitleEl.textContent = `${levelConfig.chapter} - ${levelConfig.name}`;
-        aiNameEl.textContent = levelConfig.name;
-        aiDescriptionEl.textContent = levelConfig.description;
         winConditionTextEl.textContent = `过关条件: ${levelConfig.winText}`;
         totalRoundsEl.textContent = levelConfig.totalRounds;
 
-        // Apply UI modifiers for specific levels
-        if (levelConfig.uiModifiers?.hideScores) {
-            winsCountEl.parentElement.style.visibility = 'hidden';
-            tiesCountEl.parentElement.style.visibility = 'hidden';
-            lossesCountEl.parentElement.style.visibility = 'hidden';
+        // UI Modifiers
+        if (levelConfig.uiModifiers?.hideRoundInfo) { 
+            gameStatsEl.classList.add('hidden-for-level'); 
+            aiChoiceDisplay.textContent = '?'; 
+            roundResultText.textContent = "请出拳"; 
         } else {
-             winsCountEl.parentElement.style.visibility = 'visible';
-             tiesCountEl.parentElement.style.visibility = 'visible';
-             lossesCountEl.parentElement.style.visibility = 'visible';
+            gameStatsEl.classList.remove('hidden-for-level');
+            roundResultText.textContent = 'VS'; 
         }
-        if (levelConfig.uiModifiers?.hideLastAIMove) {
-            // AI choice display will be handled in updateUI, only showing '?'
+        
+        // Handle Boss rule display
+        if (levelConfig.id === "5-1" && gameData.aiState.bossLogic && gameData.aiState.bossLogic.currentRuleAiName) {
+            currentBossRuleDisplay.textContent = `当前AI规则: ${gameData.aiState.bossLogic.currentRuleAiName}`;
+            currentBossRuleDisplay.style.display = 'block';
+        } else {
+            currentBossRuleDisplay.style.display = 'none'; // Hide for non-boss levels or if boss hasn't picked rule yet
         }
-
-
-        updateUI();
-        historyLogEl.innerHTML = ''; // Clear history log for new level
+        
+        updateUI(); 
+        historyLogEl.innerHTML = ''; 
         showScreen('game-screen');
+        if(!levels[currentLevelIndex].played) { // Mark as played only if not already
+            levels[currentLevelIndex].played = true;
+            saveProgress(); // Save immediately after marking as played
+        }
     }
 
-    function updateUI() {
+    function updateUI() { // Primarily for non-4-1 levels or general updates
         const levelConfig = levels[currentLevelIndex];
-        currentRoundEl.textContent = gameData.currentRound;
-        winsCountEl.textContent = gameData.wins;
-        tiesCountEl.textContent = gameData.ties;
-        lossesCountEl.textContent = gameData.losses;
-
-        // For Level 4-1 "失忆者"
-        if (levelConfig.uiModifiers?.hideLastAIMove && gameData.resultHistory.length > 0) {
-            // We never show AI's last actual move, only '?' until player makes current move
-        } else {
-            // Standard behavior handled by playRound's display logic
+        
+        if (!levelConfig.uiModifiers?.hideRoundInfo) {
+            currentRoundEl.textContent = gameData.currentRound;
+            winsCountEl.textContent = gameData.wins;
+            tiesCountEl.textContent = gameData.ties;
+            lossesCountEl.textContent = gameData.losses;
         }
+        // For 4-1, relevant parts are hidden by CSS or handled in handlePlayerChoice/startLevel
     }
 
     function updateHistoryLog() {
-        historyLogEl.innerHTML = ''; // Clear and rebuild for scrollability and potential tampering
+        historyLogEl.innerHTML = ''; 
         const levelConfig = levels[currentLevelIndex];
+        const isLevel41 = levelConfig.id === "4-1" && levelConfig.uiModifiers?.hideRoundInfo;
     
         gameData.resultHistory.forEach((round, index) => {
             const li = document.createElement('li');
             let playerMoveText = MOVE_EMOJI[round.playerMove] || 'N/A';
-            let aiMoveText = MOVE_EMOJI[round.aiMove] || 'N/A';
-            let resultText = '';
-            let resultClass = '';
+            let aiMoveToDisplay = MOVE_EMOJI[round.aiMove] || 'N/A'; // What AI actually played
+            let resultString = ''; 
+            let resultDisplayClass = ''; 
     
-            // For Level 4-1 "失忆者", hide AI's move for rounds except the very last one if game over
-            // Actually, for 4-1, the AI's *previous* move is hidden. The current round's AI move is revealed after player plays.
-            // The prompt says "隐藏上一把的对战记录", meaning the AI's choice in the log for previous rounds.
-            // Let's interpret "隐藏上一把的对战记录" as: in the history log, the AI's move for (currentRound - 1) is hidden.
-            // And "表示上一把AI出了什么手势的UI也要隐藏" means the main AI display area for its *last* move.
+            if (round.result === RESULTS.PLAYER_WIN) { resultString = '你赢了'; resultDisplayClass = 'history-win'; }
+            else if (round.result === RESULTS.AI_WIN) { resultString = 'AI赢了'; resultDisplayClass = 'history-loss'; }
+            else { resultString = '平局'; resultDisplayClass = 'history-tie'; }
 
-            // For Level 4-3 "嘲讽篡改者"
-            let actualResult = round.result;
-            let displayResultText = round.result;
+            let finalDisplayText;
 
             if (levelConfig.featureFlags?.tamperHistory && round.tamperedText) {
                 li.classList.add('history-tampered');
-                const r = Math.random();
-                if (r < 0.3) { // AI wins
-                    aiMoveText = MOVE_EMOJI[getRandomElement(Object.values(MOVES))]; // Could be faked
-                    playerMoveText = MOVE_EMOJI[getStandardWeakness(aiMoveText)]; // Player chose losing move
-                    displayResultText = RESULTS.AI_WIN;
-                } else if (r < 0.6) { // Player loses (same as AI wins)
-                     aiMoveText = MOVE_EMOJI[getRandomElement(Object.values(MOVES))];
-                     playerMoveText = MOVE_EMOJI[getStandardWeakness(aiMoveText)];
-                     displayResultText = RESULTS.AI_WIN;
-                } else { // Tie (but AI claims win)
-                    const fakeMove = getRandomElement(Object.values(MOVES));
-                    aiMoveText = MOVE_EMOJI[fakeMove];
-                    playerMoveText = MOVE_EMOJI[fakeMove];
-                    displayResultText = RESULTS.AI_WIN; // AI claims it won the tie
-                }
-                resultText = `回合 ${index + 1}: 你 ${playerMoveText} - AI ${aiMoveText} => ${round.tamperedText || 'AI又赢了!'}`;
-                resultClass = 'history-loss'; // Visually show as loss for player due to tampering
+                const fakeAiWinMove = getRandomElement(Object.values(MOVES));
+                const fakePlayerLosingMove = getStandardWeakness(fakeAiWinMove);
+                finalDisplayText = `回合 ${index + 1}: 你 ${MOVE_EMOJI[fakePlayerLosingMove]} - AI ${MOVE_EMOJI[fakeAiWinMove]} => <span class="history-loss">${round.tamperedText || 'AI又赢了!'}</span>`;
+            } else if (isLevel41 && index === gameData.resultHistory.length - 1 && gameData.currentRound < levelConfig.totalRounds) {
+                // For Level 4-1, if it's the *just completed* round AND the game is NOT over:
+                // Hide AI move and result for this specific entry in the log.
+                finalDisplayText = `回合 ${index + 1}: 你 ${playerMoveText} - AI <span class="history-hidden-outcome">?</span> => <span class="history-hidden-outcome">结果隐藏</span>`;
             } else {
-                 // Standard result display
-                if (actualResult === RESULTS.PLAYER_WIN) { resultText = '你赢了'; resultClass = 'history-win'; }
-                else if (actualResult === RESULTS.AI_WIN) { resultText = 'AI赢了'; resultClass = 'history-loss'; }
-                else { resultText = '平局'; resultClass = 'history-tie'; }
-                
-                // Adjust display for 4-1 "失忆者" if it's not the most recent round in history
-                let displayAiMove = aiMoveText;
-                if (levelConfig.uiModifiers?.hideLastAIMove && index < gameData.resultHistory.length -1) {
-                    displayAiMove = '?';
-                }
-
-                resultText = `回合 ${index + 1}: 你 ${playerMoveText} - AI ${displayAiMove} => ${resultText}`;
+                // Standard display for all other cases (other levels, or previous rounds of 4-1, or last round of 4-1 when game over)
+                finalDisplayText = `回合 ${index + 1}: 你 ${playerMoveText} - AI ${aiMoveToDisplay} => <span class="${resultDisplayClass}">${resultString}</span>`;
             }
-
-
-            li.innerHTML = resultText; // Use innerHTML for emoji
-            if (resultClass && !round.tamperedText) li.classList.add(resultClass);
+    
+            li.innerHTML = finalDisplayText;
             historyLogEl.appendChild(li);
         });
-        historyLogContainer.scrollTop = historyLogContainer.scrollHeight; // Auto-scroll to bottom
+        historyLogContainer.scrollTop = historyLogContainer.scrollHeight; 
     }
     
     function handlePlayerChoice(playerMove) {
         if (isGameInputDisabled) return;
 
         const levelConfig = levels[currentLevelIndex];
-        if (gameData.currentRound >= levelConfig.totalRounds) return; // Game already ended
+        if (gameData.currentRound >= levelConfig.totalRounds) return; 
 
-        // For Boss Timer - if it's active, making a choice should clear/reset it for next round.
         if (levelConfig.featureFlags?.bossTimer && bossTimerInterval) {
             clearInterval(bossTimerInterval);
-            // Timer will be restarted by the AI logic if still in timed phase
         }
 
-
-        let currentRules = null;
-        // For Level 4-2 "规则变幻师"
-        // The AI function for 4-2 sets levelConfig.currentRules for the *upcoming* round.
-        // So, we use that directly.
-        if (levelConfig.id === "4-2") {
-            // The AI function for 4-2 needs to be called to set the rules for *this* round
-            // This is a bit tricky. The AI function call below will handle it.
-            // For determining winner, we need rules set *before* AI makes its move.
-            // This means AI for 4-2 should set its rules *then* pick its move based on its internal cycle.
-        }
+        let currentRulesForThisTurn = null; 
+        // AI makes move. For 4-2, its function also sets up `levelConfig.currentRules` for THIS turn.
+        const aiMove = levelConfig.ai(gameData, levelConfig); 
         
-        // Get AI move (this might also update rules for 4-2)
-        const aiMove = levelConfig.ai(gameData, levelConfig);
-
         if (levelConfig.id === "4-2") {
-             currentRules = levelConfig.currentRules; // Rules for current round are now set
-             if (gameData.resultHistory.length > 0) { // Show rules from PREVIOUS round
-                const prevRules = gameData.resultHistory[gameData.resultHistory.length-1].rules;
-                if(prevRules){
-                    currentRulesDisplay.textContent = `上局规则: ✊胜${MOVE_EMOJI[prevRules.rock]}, ✋胜${MOVE_EMOJI[prevRules.paper]}, ✌️胜${MOVE_EMOJI[prevRules.scissors]}`;
+             currentRulesForThisTurn = levelConfig.currentRules; // Get rules for *this* round that AI set
+             // Display rules from PREVIOUS round if available
+             if (gameData.resultHistory.length > 0) { 
+                const prevRoundData = gameData.resultHistory[gameData.resultHistory.length-1];
+                if(prevRoundData && prevRoundData.rules){
+                    // Construct rule string for display
+                    let ruleText = "上局规则: ";
+                    const ruleEntries = Object.entries(prevRoundData.rules)
+                                          .map(([beaten, beater]) => `${MOVE_EMOJI[beater]}胜${MOVE_EMOJI[beaten]}`);
+                    currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
+                } else {
+                    currentRulesDisplay.style.display = 'none';
                 }
-             } else {
+             } else { // First round of 4-2
                 currentRulesDisplay.style.display = 'none';
              }
         } else {
             currentRulesDisplay.style.display = 'none';
         }
 
-
-        const result = determineWinner(playerMove, aiMove, currentRules);
+        const result = determineWinner(playerMove, aiMove, currentRulesForThisTurn);
 
         gameData.currentRound++;
         gameData.playerMoveHistory.push(playerMove);
         gameData.aiMoveHistory.push(aiMove);
         
-        let roundRecord = { playerMove, aiMove, result };
-        if (currentRules) roundRecord.rules = {...currentRules}; // Store rules for L4-2 history display
-
-        // For Level 4-3 "嘲讽篡改者"
-        if (levelConfig.featureFlags?.tamperHistory) {
-            const taunts = ["太弱了!", "不堪一击!", "菜鸟~", "你行不行啊？", "我又赢啦!"];
-            if (Math.random() < 0.7) { // 70% chance to add a taunt
-                roundRecord.tamperedText = getRandomElement(taunts);
+        // Update AI's internal state if it's one that tracks wins/losses for its moves
+        // This needs to be done *after* the AI move is determined and result known
+        if (levelConfig.id === "3-2" || (levelConfig.id === "5-1" && gameData.aiState.bossLogic?.currentRuleAiKey === "3-2")) {
+            const stateToUpdate = (levelConfig.id === "5-1") ? gameData.aiState.subAiState : gameData.aiState;
+            if (!stateToUpdate.moveWinCounts) stateToUpdate.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
+            if (result === RESULTS.AI_WIN) {
+                stateToUpdate.moveWinCounts[aiMove]++;
             }
+        }
+        if (levelConfig.id === "3-4" || (levelConfig.id === "5-1" && gameData.aiState.bossLogic?.currentRuleAiKey === "3-4")) {
+            const stateToUpdate = (levelConfig.id === "5-1") ? gameData.aiState.subAiState : gameData.aiState;
+            if (!stateToUpdate.netWins) stateToUpdate.netWins = { rock: 0, paper: 0, scissors: 0 };
+            if (result === RESULTS.AI_WIN) stateToUpdate.netWins[aiMove]++;
+            else if (result === RESULTS.PLAYER_WIN) stateToUpdate.netWins[aiMove]--;
         }
 
 
+        let roundRecord = { playerMove, aiMove, result };
+        if (currentRulesForThisTurn) roundRecord.rules = {...currentRulesForThisTurn}; 
+
+        if (levelConfig.featureFlags?.tamperHistory) {
+            const taunts = ["太弱了!", "不堪一击!", "菜鸟~", "你行不行啊？", "我又赢啦!"];
+            if (Math.random() < 0.7) { 
+                roundRecord.tamperedText = getRandomElement(taunts);
+            }
+        }
         gameData.resultHistory.push(roundRecord);
 
         if (result === RESULTS.PLAYER_WIN) gameData.wins++;
@@ -1010,34 +1016,39 @@ document.addEventListener('DOMContentLoaded', () => {
         else gameData.ties++;
 
         playerChoiceDisplay.textContent = MOVE_EMOJI[playerMove];
-        // For Level 4-1, AI's current choice *is* shown, but its previous choice in history is hidden.
-        // The main display always shows current AI choice.
-        aiChoiceDisplay.textContent = MOVE_EMOJI[aiMove]; 
-        
-        if (result === RESULTS.PLAYER_WIN) roundResultText.textContent = "你赢了!";
-        else if (result === RESULTS.AI_WIN) roundResultText.textContent = "AI赢了!";
-        else roundResultText.textContent = "平局!";
 
-        updateUI();
-        updateHistoryLog();
+        if (levelConfig.uiModifiers?.hideRoundInfo && levelConfig.id === "4-1") {
+            aiChoiceDisplay.textContent = '?'; 
+            roundResultText.textContent = "回合结束";
+        } else {
+            aiChoiceDisplay.textContent = MOVE_EMOJI[aiMove]; 
+            if (result === RESULTS.PLAYER_WIN) roundResultText.textContent = "你赢了!";
+            else if (result === RESULTS.AI_WIN) roundResultText.textContent = "AI赢了!";
+            else roundResultText.textContent = "平局!";
+        }
+        
+        updateUI(); 
+        updateHistoryLog(); 
 
         if (gameData.currentRound >= levelConfig.totalRounds) {
             endLevel();
         } else {
-             // If Boss AI, and it's in timer phase, restart timer for next player move
              if (levelConfig.featureFlags?.bossTimer && gameData.aiState.bossLogic?.timerActive) {
-                const roundsRemaining = levelConfig.totalRounds - gameData.currentRound;
-                if (roundsRemaining <= 30) {
-                    const roundIntoTimerPhase = 30 - roundsRemaining;
+                const roundsRemainingInGame = levelConfig.totalRounds - gameData.currentRound;
+                if (roundsRemainingInGame <= 30 && roundsRemainingInGame > 0) { // Ensure not triggering on last round if already processed
+                    const roundIntoTimerPhase = 30 - roundsRemainingInGame;
                     const newTime = Math.max(5, Math.round(30 - (25/29) * roundIntoTimerPhase));
                     startBossTimer(newTime);
+                } else if (roundsRemainingInGame <= 0) { // Game technically ended, clear timer
+                     clearInterval(bossTimerInterval);
+                     timerDisplay.style.display = 'none';
                 }
             }
         }
     }
 
     function endLevel() {
-        clearInterval(bossTimerInterval); // Clear any active boss timer
+        clearInterval(bossTimerInterval); 
         timerDisplay.style.display = 'none';
         isGameInputDisabled = true;
         choiceBtns.forEach(btn => btn.disabled = true);
@@ -1045,22 +1056,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const levelConfig = levels[currentLevelIndex];
         const stats = { wins: gameData.wins, ties: gameData.ties, losses: gameData.losses, totalRounds: levelConfig.totalRounds };
         const playerWon = levelConfig.winCondition(stats);
+        const timeTakenMs = Date.now() - gameData.levelStartTime;
 
         modalTitle.textContent = playerWon ? "关卡通过!" : "挑战失败";
         modalMessage.textContent = playerWon ? `恭喜你战胜了 ${levelConfig.name}!` : `再接再厉，下次一定能打败 ${levelConfig.name}!`;
         modalWins.textContent = gameData.wins;
         modalTies.textContent = gameData.ties;
         modalLosses.textContent = gameData.losses;
+        timeTakenValueEl.textContent = formatTime(timeTakenMs);
 
-        // Save full game history for AI 4-4
         const roundPlays = gameData.resultHistory.map(r => ({player: r.playerMove, ai: r.aiMove}));
-        saveCompletedGame(currentLevelIndex, roundPlays);
+        saveCompletedGame(levelConfig, roundPlays);
 
 
         if (playerWon) {
-            if (!levelConfig.bestScore || gameData.wins > levelConfig.bestScore.wins || (gameData.wins === levelConfig.bestScore.wins && gameData.ties > levelConfig.bestScore.ties)) {
-                levels[currentLevelIndex].bestScore = { wins: gameData.wins, ties: gameData.ties, losses: gameData.losses };
+            const currentBest = levels[currentLevelIndex].bestScore;
+            // Update best score if current is better or no best score exists
+            if (!currentBest || 
+                gameData.wins > currentBest.wins || 
+                (gameData.wins === currentBest.wins && gameData.ties > currentBest.ties) ||
+                (gameData.wins === currentBest.wins && gameData.ties === currentBest.ties && (typeof currentBest.time !== 'number' || timeTakenMs < currentBest.time))
+            ) {
+                levels[currentLevelIndex].bestScore = { 
+                    wins: gameData.wins, 
+                    ties: gameData.ties, 
+                    losses: gameData.losses,
+                    time: timeTakenMs 
+                };
             }
+
+
             if (currentLevelIndex + 1 < levels.length) {
                 levels[currentLevelIndex + 1].unlocked = true;
                 nextLevelBtn.style.display = 'inline-block';
@@ -1069,20 +1094,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     startLevel(currentLevelIndex + 1);
                 };
             } else {
-                nextLevelBtn.style.display = 'none'; // No next level
+                nextLevelBtn.style.display = 'none'; 
                 modalMessage.textContent += " 你已经完成了所有挑战！太棒了！";
             }
-            saveProgress();
         } else {
             nextLevelBtn.style.display = 'none';
         }
         
         replayLevelBtn.onclick = () => {
             levelCompleteModal.classList.remove('active');
-            startLevel(currentLevelIndex); // Replay current level
+            startLevel(currentLevelIndex); 
         };
 
+        saveProgress(); 
         levelCompleteModal.classList.add('active');
+        updateHistoryLog(); // Call one last time to ensure 4-1 history is fully revealed if game ended.
     }
 
     // --- Event Listeners ---
@@ -1091,31 +1117,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('keydown', (e) => {
-        if (gameScreen.classList.contains('active') && !isGameInputDisabled) {
+        if (gameScreen.classList.contains('active') && !isGameInputDisabled && !levelCompleteModal.classList.contains('active') && !hintModal.classList.contains('active')) {
             let move = null;
             if (e.key.toLowerCase() === 'r') move = MOVES.ROCK;
             else if (e.key.toLowerCase() === 'p') move = MOVES.PAPER;
             else if (e.key.toLowerCase() === 's') move = MOVES.SCISSORS;
             
             if (move) {
-                // Find the button and simulate click for visual feedback (optional)
+                e.preventDefault(); // Prevent default browser action for R, P, S if any
                 const btn = document.querySelector(`.choice-btn[data-move="${move}"]`);
-                if (btn) btn.focus(); // or btn.classList.add('active-shortcut'); setTimeout remove
+                if (btn) btn.focus(); 
                 handlePlayerChoice(move);
             }
         }
     });
 
     backToMenuBtn.addEventListener('click', () => {
-        clearInterval(bossTimerInterval); // Stop boss timer if active
+        clearInterval(bossTimerInterval); 
         populateLevelSelect();
         showScreen('main-menu');
     });
     
     document.querySelectorAll('.modal-close-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            btn.closest('.modal').classList.remove('active');
-            if(btn.closest('.modal').id === 'level-complete-modal'){ // If closing level complete modal, go to menu
+            const modal = btn.closest('.modal');
+            modal.classList.remove('active');
+            if(modal.id === 'level-complete-modal'){ 
                  populateLevelSelect();
                  showScreen('main-menu');
             }
@@ -1124,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hintBtn.addEventListener('click', () => {
         const levelConfig = levels[currentLevelIndex];
-        hintTextContent.textContent = levelConfig.hint;
+        hintTextContent.innerHTML = levelConfig.hint; 
         hintModal.classList.add('active');
     });
 
@@ -1137,8 +1164,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    clearAllDataBtn.addEventListener('click', () => {
+        if (confirm("警告：这将清除所有关卡进度、最佳记录和游戏日志！此操作无法撤销。确定要继续吗？")) {
+            localStorage.removeItem('rpsGameLevels');
+            localStorage.removeItem('rpsGameLog');
+            resetLevelsToInitial(); 
+            gameData.gameLog = []; 
+            // saveProgress(); // No, we want it cleared from storage
+            populateLevelSelect(); // Will show the reset state
+            showScreen('main-menu');
+            alert("所有数据已清除。游戏将重置为初始状态。");
+        }
+    });
+
     // --- Initialization ---
-    loadProgress();
+    loadProgress(); // Load or set to initial state
     populateLevelSelect();
     showScreen('main-menu');
 
