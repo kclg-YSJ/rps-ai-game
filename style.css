@@ -6,6 +6,10 @@
     --card-bg: #ffffff;
     --border-radius: 8px;
     --box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    --success-color: #2ecc71;
+    --warning-color: #f39c12; /* For played-not-beaten and some buttons */
+    --danger-color: #e74c3c;
+    --locked-color: #bdc3c7;
 }
 
 body {
@@ -16,9 +20,9 @@ body {
     padding: 20px;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align to top for long content */
+    align-items: flex-start; 
     min-height: 100vh;
-    overflow-y: auto; /* Allow body to scroll if content is too long */
+    overflow-y: auto; 
 }
 
 #game-container {
@@ -45,7 +49,7 @@ body {
 }
 #level-select-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
     gap: 15px;
     margin-bottom: 20px;
 }
@@ -55,34 +59,53 @@ body {
     border-radius: var(--border-radius);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-left: 5px solid var(--primary-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-left-color 0.3s ease;
+    border-left: 5px solid var(--primary-color); /* Default for unlocked, not played */
 }
 .level-card:hover:not(.locked) {
     transform: translateY(-5px);
     box-shadow: 0 6px 12px rgba(0,0,0,0.1);
 }
 .level-card.locked {
-    background-color: #e0e0e0;
-    color: #999;
+    background-color: #e9ecef; /* Lighter grey */
+    color: #6c757d; /* Darker text for locked */
     cursor: not-allowed;
-    border-left-color: #999;
+    border-left-color: var(--locked-color);
 }
+.level-card.beaten {
+    border-left-color: var(--success-color) !important; /* Green for beaten, important to override default */
+}
+.level-card.played-not-beaten {
+    border-left-color: var(--warning-color) !important; /* Orange for played but not beaten */
+}
+
 .level-card h3 { margin-top: 0; }
 .level-card p { font-size: 0.9em; margin-bottom: 5px; }
-.level-card .best-score { font-size: 0.8em; color: #555; }
-#unlock-all-btn {
-    position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s;
+.level-card .best-score-display { font-size: 0.85em; color: #555; margin-top: 8px; line-height: 1.4; }
+.level-card .best-score-display strong { color: var(--primary-color); } 
+.level-card .best-time-display { font-size: 0.8em; color: var(--secondary-color); font-weight: bold; }
+.level-card .win-req { font-size: 0.8em; color: #777; }
+
+
+.main-menu-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
 }
-#unlock-all-btn:hover { opacity: 1; }
+
+#unlock-all-btn, #clear-all-data-btn {
+    padding: 10px 15px;
+    font-size: 0.9em;
+    color: white;
+}
+#unlock-all-btn { background-color: var(--primary-color); }
+#unlock-all-btn:hover { background-color: #3a7bc8; }
+#clear-all-data-btn { background-color: var(--danger-color); }
+#clear-all-data-btn:hover { background-color: #c0392b; }
+
 
 /* Game Screen */
 .game-header {
@@ -132,7 +155,7 @@ body {
 .move-display {
     font-size: 3em;
     margin-top: 10px;
-    min-height: 1.2em; /* Ensure space even when '?' */
+    min-height: 1.2em; 
 }
 
 #game-stats {
@@ -147,6 +170,23 @@ body {
     justify-content: space-around;
 }
 #game-stats p { margin: 5px; }
+/* For hiding stats in Level 4-1 */
+#game-stats.hidden-for-level #current-round,
+#game-stats.hidden-for-level #total-rounds,
+#game-stats.hidden-for-level #wins-count,
+#game-stats.hidden-for-level #ties-count,
+#game-stats.hidden-for-level #losses-count,
+#game-stats.hidden-for-level #current-round ~ span, /* Sibling slash */
+#game-stats.hidden-for-level #wins-count ~ span, /* Sibling pipes */
+#game-stats.hidden-for-level #ties-count ~ span {
+    display: none; /* Hide the numbers and separators */
+}
+#game-stats.hidden-for-level p:nth-child(1), /* "回合: X / Y" */
+#game-stats.hidden-for-level p:nth-child(2)  /* "胜: X | 平: Y | 负: Z" */
+{
+    visibility: hidden; /* Hides the text labels like "回合:", "胜:", "平:", "负:" */
+}
+
 
 #history-panel {
     margin-top: 20px;
@@ -156,8 +196,8 @@ body {
     color: var(--primary-color);
 }
 #history-log-container {
-    max-height: 200px; /* Limit height */
-    overflow-y: auto; /* Enable scrolling */
+    max-height: 200px; 
+    overflow-y: auto; 
     border: 1px solid #ddd;
     padding: 10px;
     border-radius: var(--border-radius);
@@ -174,13 +214,20 @@ body {
     font-size: 0.9em;
 }
 #history-log li:last-child { border-bottom: none; }
-.history-win { color: green; }
-.history-loss { color: red; }
-.history-tie { color: orange; }
+.history-win { color: var(--success-color); }
+.history-loss { color: var(--danger-color); }
+.history-tie { color: var(--warning-color); }
 .history-tampered { color: purple; font-style: italic; }
+.history-hidden-outcome { /* For 4-1 history items that are hidden */
+    font-style: italic;
+    color: #999;
+    background-color: #eee; /* Slight background to indicate redaction */
+    padding: 0 3px;
+    border-radius: 3px;
+}
 
 
-/* Buttons */
+/* Buttons (general) */
 button {
     background-color: var(--secondary-color);
     color: white;
@@ -192,21 +239,21 @@ button {
     transition: background-color 0.2s ease;
 }
 button:hover { background-color: #40c3a2; }
-#back-to-menu-btn { background-color: #f39c12; }
-#back-to-menu-btn:hover { background-color: #e67e22; }
+#back-to-menu-btn { background-color: var(--warning-color); }
+#back-to-menu-btn:hover { background-color: #d35400; } 
 
 
 /* Modal */
 .modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 100; /* Sit on top */
+    display: none; 
+    position: fixed; 
+    z-index: 100; 
     left: 0;
     top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.5); 
     justify-content: center;
     align-items: center;
 }
@@ -223,3 +270,8 @@ button:hover { background-color: #40c3a2; }
 }
 .modal-content h2 { margin-top: 0; color: var(--primary-color); }
 .modal-content button { margin: 10px 5px 0; }
+#modal-time-taken {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: 8px;
+}
