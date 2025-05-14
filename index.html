@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>石头剪刀布 - AI对决</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <div id="main-menu" class="screen active">
+            <h1>石头剪刀布 - AI对决</h1>
+            <div id="level-select-container">
+                <!-- Levels will be populated by JS -->
+            </div>
+            <button id="unlock-all-btn" title="一键解锁所有关卡 (后门)">🔑</button>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <h2 id="level-title">关卡名称</h2>
+                <button id="back-to-menu-btn">返回主菜单</button>
+            </div>
+            
+            <div id="ai-info">
+                <p id="ai-name">AI名称</p>
+                <p id="ai-description">AI描述</p>
+                <button id="hint-btn">查看提示</button>
+            </div>
+
+            <div class="game-area">
+                <div class="player-area">
+                    <h3>你的选择</h3>
+                    <div class="choices">
+                        <button class="choice-btn" data-move="rock" title="快捷键: R">✊ 石头</button>
+                        <button class="choice-btn" data-move="paper" title="快捷键: P">✋ 布</button>
+                        <button class="choice-btn" data-move="scissors" title="快捷键: S">✌️ 剪刀</button>
+                    </div>
+                    <div id="player-choice-display" class="move-display">?</div>
+                </div>
+
+                <div class="vs-area">
+                    <p id="round-result-text">VS</p>
+                    <p id="timer-display" style="display:none; font-size: 1.5em; color: red;"></p>
+                </div>
+
+                <div class="ai-area">
+                    <h3>AI的选择</h3>
+                    <!-- AI's choice will be shown here, initially hidden for some AIs -->
+                    <div id="ai-choice-display" class="move-display">?</div>
+                </div>
+            </div>
+            
+            <div id="game-stats">
+                <p>回合: <span id="current-round">0</span> / <span id="total-rounds">0</span></p>
+                <p>胜: <span id="wins-count">0</span> | 平: <span id="ties-count">0</span> | 负: <span id="losses-count">0</span></p>
+                <p id="win-condition-text">过关条件: N/A</p>
+                <p id="current-rules-display" style="display:none;"></p> <!-- For Level 4-2 -->
+            </div>
+
+            <div id="history-panel">
+                <h3>对局记录</h3>
+                <div id="history-log-container">
+                    <ul id="history-log">
+                        <!-- History items will be populated by JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="level-complete-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="modal-title">关卡完成!</h2>
+                <p id="modal-message">你成功了!</p>
+                <p id="modal-score">你的得分: 胜 <span id="modal-wins">0</span>, 平 <span id="modal-ties">0</span>, 负 <span id="modal-losses">0</span></p>
+                <button id="next-level-btn">下一关</button>
+                <button id="replay-level-btn">再玩一次</button>
+                <button class="modal-close-btn">返回主菜单</button>
+            </div>
+        </div>
+        
+        <div id="hint-modal" class="modal">
+            <div class="modal-content">
+                <h2>提示</h2>
+                <p id="hint-text-content">这是提示内容。</p>
+                <button class="modal-close-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
