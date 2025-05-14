@@ -127,6 +127,9 @@ body {
 }
 #ai-info p { margin: 5px 0; }
 #ai-name { font-weight: bold; }
+/* Style for boss rule display if needed, already has inline styles in HTML */
+#current-boss-rule-display { margin-top: 8px; }
+
 
 .game-area {
     display: flex;
