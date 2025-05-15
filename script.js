@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!gameData.aiState.moveWinCounts) {
                 gameData.aiState.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
             }
-            const counts = gameData.aiState.moveWinCounts;
+            const counts = gameData.aiState.moveWinCounts; // This state is updated in handlePlayerChoice
             let maxWins = -1; 
             let bestMoves = [];
             for (const move in counts) {
@@ -302,37 +302,66 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return getRandomElement(Object.values(MOVES));
         },
-        "3-4": (gameData, levelConfig) => { // 概率操纵师
-            if (!gameData.aiState.netWins) { 
-                gameData.aiState.netWins = { rock: 0, paper: 0, scissors: 0 };
+        "3-4": (gameData, levelConfig) => { // 概率操纵师 - Logic updated for AI's own move net wins
+            // gameData.aiState.netWins is updated in handlePlayerChoice
+            if (!gameData.aiState.netWins) {
+                gameData.aiState.netWins = { rock: 0, paper: 0, scissors: 0 }; // Should be initialized by rule change or start
             }
+
+            const netWins = gameData.aiState.netWins;
+            const dominantMoves = [];
+            for (const move in netWins) {
+                if (netWins[move] >= 4) {
+                    dominantMoves.push(move);
+                }
+            }
+
+            if (dominantMoves.length === 1) {
+                return dominantMoves[0];
+            } else if (dominantMoves.length > 1) {
+                return getRandomElement(dominantMoves);
+            }
+
             const getProb = (netWin) => {
-                if (netWin <= 0) return 1/3;
-                if (netWin === 1) return 1/2;
-                if (netWin === 2) return 3/4;
-                if (netWin === 3) return 4/5;
-                return 1; 
+                if (netWin === 3) return 4/5;  // 0.8
+                if (netWin === 2) return 3/4;  // 0.75
+                if (netWin === 1) return 1/2;  // 0.5
+                if (netWin === 0) return 1/3;  // ~0.333
+                if (netWin === -1) return 1/4; // 0.25
+                if (netWin === -2) return 1/6; // ~0.167
+                if (netWin === -3) return 1/10;// 0.1
+                if (netWin <= -4) return 0;   // Probability is 0
+                return 1/3; 
             };
 
             let probs = {
-                rock: getProb(gameData.aiState.netWins.rock),
-                paper: getProb(gameData.aiState.netWins.paper),
-                scissors: getProb(gameData.aiState.netWins.scissors)
+                rock: getProb(netWins.rock),
+                paper: getProb(netWins.paper),
+                scissors: getProb(netWins.scissors)
             };
 
             const totalProb = probs.rock + probs.paper + probs.scissors;
-            if (totalProb > 0 && totalProb !== Infinity) { 
-                probs.rock /= totalProb;
-                probs.paper /= totalProb;
-                probs.scissors /= totalProb;
-            } else { 
-                probs = { rock: 1/3, paper: 1/3, scissors: 1/3 };
+
+            if (totalProb <= 0) { 
+                return getRandomElement(Object.values(MOVES));
             }
+            
+            probs.rock /= totalProb;
+            probs.paper /= totalProb;
+            probs.scissors /= totalProb;
             
             const rand = Math.random();
             if (rand < probs.rock) return MOVES.ROCK;
             if (rand < probs.rock + probs.paper) return MOVES.PAPER;
-            return MOVES.SCISSORS;
+            
+            if (probs.scissors > 0) return MOVES.SCISSORS; // Only if it has some probability
+            
+            const availableMoves = [];
+            if (probs.rock > 0) availableMoves.push(MOVES.ROCK);
+            if (probs.paper > 0) availableMoves.push(MOVES.PAPER);
+
+            if (availableMoves.length > 0) return getRandomElement(availableMoves);
+            return getRandomElement(Object.values(MOVES)); // Absolute last resort
         },
         // Chapter 4
         "4-1": (gameData, levelConfig) => { // 失忆者
@@ -527,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             winText: "24局16胜",
             ai: aiFunctions["1-5"] 
         },
+        // Chapter 2: 进阶之路
         { 
             id: "2-1", chapter: "第二章：进阶之路", name: "模仿者", 
             description: "它似乎在学习你的行为。", 
@@ -581,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
             winText: "24局19平(胜+平)",
             ai: aiFunctions["2-6"] 
         },
+        // Chapter 3: 策略大师
         { 
             id: "3-1", chapter: "第三章：策略大师", name: "从众者", 
             description: "它关注你的整体偏好。", 
@@ -610,13 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         { 
             id: "3-4", chapter: "第三章：策略大师", name: "概率操纵师", 
-            description: "它的自信心会影响选择。", 
-            hint: "这个AI会根据它用每种手势获得的净胜局数（胜局 - 负局）来调整该手势的出拳概率。净胜0局时基础概率1/3，净胜1局时概率变为1/2，净胜2局为3/4，净胜3局为4/5，净胜4局及以上时概率为1（即必定出该手势）。三种手势的概率会进行归一化处理。",
+            description: "它的自信与否，会显著影响其出拳选择的倾向性。", 
+            hint: "这个AI会根据它用每种手势获得的净胜局数（AI胜 - 玩家胜）来调整该手势的出拳概率。具体规则：1. 若有手势净胜场>=4，AI会优先考虑（若只有一个则必出，多个则随机）。2. 若无绝对优势手势，则：净胜0局基础概率1/3；净胜1局概率1/2；净胜2局为3/4；净胜3局为4/5。3. 净胜场为负数时，概率会降低：-1局1/4，-2局1/6，-3局1/10，小于等于-4局时该手势概率为0（除非所有手势均如此，则随机）。所有手势的概率最终会进行归一化处理。", 
             totalRounds: 40, 
-            winCondition: (s) => s.wins >= 20,
-            winText: "40局20胜",
+            winCondition: (s) => s.wins >= 18, 
+            winText: "40局18胜",             
             ai: aiFunctions["3-4"] 
         },
+        // Chapter 4: 诡道高手
         { 
             id: "4-1", chapter: "第四章：诡道高手", name: "失忆者", 
             description: "有些信息似乎被刻意隐藏了。", 
@@ -656,10 +688,11 @@ document.addEventListener('DOMContentLoaded', () => {
             winText: "30局, (胜+平)=30, 且胜≥1",
             ai: aiFunctions["4-4"] 
         },
+        // Chapter 5: 最终挑战
         { 
             id: "5-1", chapter: "第五章：最终挑战", name: "千面智械", 
             description: "终极考验，集大成之作。", 
-            hint: "终极Boss！它会从之前所有AI（除了历史复现者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
+            hint: "终极Boss！它会从之前所有AI（除了历史复现者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始，“概率操纵师”的AI手势净胜场会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
             totalRounds: 300, 
             winCondition: (s) => s.wins >= 200,
             winText: "300局200胜",
@@ -684,16 +717,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${minutes}分 ${seconds.toString().padStart(2, '0')}秒`;
     }
 
-    // CORRECTED FUNCTION
     function resetLevelsToInitial() {
-        // Create new level objects based on initialLevels, preserving function references
         levels = initialLevels.map(initialLevel => ({
-            ...initialLevel, // This correctly spreads the original 'ai' function
-            unlocked: false,  // Default unlocked state
-            bestScore: null,  // Default best score
-            played: false     // Default played state
+            ...initialLevel, 
+            unlocked: false,  
+            bestScore: null,  
+            played: false     
         }));
-        // Ensure the first level is always unlocked by default
         if (levels.length > 0) {
             levels[0].unlocked = true;
         }
@@ -702,22 +732,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadProgress() {
         const savedLevels = localStorage.getItem('rpsGameLevels');
-        resetLevelsToInitial(); // This now correctly populates `levels` with functions.
+        resetLevelsToInitial(); 
 
         if (savedLevels) {
-            const parsedLevels = JSON.parse(savedLevels); // These `parsedLevels` from localStorage WON'T have 'ai' functions.
-            levels.forEach((level, index) => { // Iterate over the `levels` array that *does* have functions.
+            const parsedLevels = JSON.parse(savedLevels); 
+            levels.forEach((level, index) => { 
                 const savedLevel = parsedLevels.find(sl => sl.id === level.id);
                 if (savedLevel) {
-                    // We are only updating 'unlocked', 'bestScore', 'played' from 'savedLevel'.
-                    // The 'ai' function on `levels[index]` (which is `level`) remains intact from `resetLevelsToInitial`.
                     levels[index].unlocked = savedLevel.unlocked;
                     levels[index].bestScore = savedLevel.bestScore === null ? null : { ...savedLevel.bestScore };
                     levels[index].played = savedLevel.played || (savedLevel.bestScore !== null); 
                 }
             });
         }
-        if (levels.length > 0 && !levels[0].unlocked) { // Ensure first level is unlocked if somehow missed
+        if (levels.length > 0 && !levels[0].unlocked) { 
             levels[0].unlocked = true;
         }
 
@@ -856,7 +884,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  currentBossRuleDisplay.textContent = `当前AI规则: ${gameData.aiState.bossLogic.currentRuleAiName}`;
                  currentBossRuleDisplay.style.display = 'block';
             } else {
-                // Boss AI will set this when its logic runs for the first time in handlePlayerChoice
                 currentBossRuleDisplay.style.display = 'none'; 
             }
         } else {
@@ -922,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameInputDisabled) return;
 
         const levelConfig = levels[currentLevelIndex];
-        if (!levelConfig || typeof levelConfig.ai !== 'function') { // Added safety check
+        if (!levelConfig || typeof levelConfig.ai !== 'function') { 
             console.error("Error: levelConfig or levelConfig.ai is not properly defined.", levelConfig);
             alert("发生了一个严重错误，请尝试刷新或清除数据。");
             return;
@@ -963,20 +990,33 @@ document.addEventListener('DOMContentLoaded', () => {
         gameData.playerMoveHistory.push(playerMove);
         gameData.aiMoveHistory.push(aiMove);
         
-        if (levelConfig.id === "3-2" || (levelConfig.id === "5-1" && gameData.aiState.bossLogic?.currentRuleAiKey === "3-2")) {
-            const stateToUpdate = (levelConfig.id === "5-1") ? gameData.aiState.subAiState : gameData.aiState;
-            if (!stateToUpdate.moveWinCounts) stateToUpdate.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
-            if (result === RESULTS.AI_WIN) {
-                stateToUpdate.moveWinCounts[aiMove]++;
-            }
-        }
-        if (levelConfig.id === "3-4" || (levelConfig.id === "5-1" && gameData.aiState.bossLogic?.currentRuleAiKey === "3-4")) {
-            const stateToUpdate = (levelConfig.id === "5-1") ? gameData.aiState.subAiState : gameData.aiState;
-            if (!stateToUpdate.netWins) stateToUpdate.netWins = { rock: 0, paper: 0, scissors: 0 };
-            if (result === RESULTS.AI_WIN) stateToUpdate.netWins[aiMove]++;
-            else if (result === RESULTS.PLAYER_WIN) stateToUpdate.netWins[aiMove]--;
+        // --- MODIFIED SECTION for AI stat updates ---
+        const currentActiveLevelConfig = levels[currentLevelIndex]; // Get current level config again (or use levelConfig)
+        let activeAiIdForStats = currentActiveLevelConfig.id;
+        let stateToUpdateForStats = gameData.aiState;
+
+        if (currentActiveLevelConfig.id === "5-1" && gameData.aiState.bossLogic?.currentRuleAiKey) {
+            activeAiIdForStats = gameData.aiState.bossLogic.currentRuleAiKey;
+            stateToUpdateForStats = gameData.aiState.subAiState;
         }
 
+        // For AI 3-2 "胜者为王": based on AI's winning move
+        if (activeAiIdForStats === "3-2") {
+            if (!stateToUpdateForStats.moveWinCounts) stateToUpdateForStats.moveWinCounts = { rock: 0, paper: 0, scissors: 0 };
+            if (result === RESULTS.AI_WIN) {
+                stateToUpdateForStats.moveWinCounts[aiMove]++; // aiMove is the move AI just played
+            }
+        }
+
+        // For AI 3-4 "概率操纵师": based on net wins of AI's own played move
+        if (activeAiIdForStats === "3-4") {
+            if (!stateToUpdateForStats.netWins) stateToUpdateForStats.netWins = { rock: 0, paper: 0, scissors: 0 };
+            if (result === RESULTS.AI_WIN) {
+                stateToUpdateForStats.netWins[aiMove]++; 
+            } else if (result === RESULTS.PLAYER_WIN) {
+                stateToUpdateForStats.netWins[aiMove]--;
+            }
+        }
 
         let roundRecord = { playerMove, aiMove, result };
         if (currentRulesForThisTurn) roundRecord.rules = {...currentRulesForThisTurn}; 
