@@ -107,9 +107,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return RESULTS.AI_WIN;
         } else {
-            if(playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) return rules.rockToScissors?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
-            else if(playerMove === MOVES.PAPER && aiMove === MOVES.ROCK) return rules.paperToRock?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
-            else if(playerMove === MOVES.SCISSORS && aiMove === MOVES.PAPER) return rules.scissorsToPaper?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
+            if (playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) {
+                return rules.rockToScissors ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+            }
+            if (playerMove === MOVES.SCISSORS && aiMove === MOVES.ROCK) { // 反向情况
+                return rules.rockToScissors ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+            }
+    
+            if (playerMove === MOVES.PAPER && aiMove === MOVES.ROCK) {
+                return rules.paperToRock ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+            }
+            if (playerMove === MOVES.ROCK && aiMove === MOVES.PAPER) { // 反向情况
+                return rules.paperToRock ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+            }
+    
+            if (playerMove === MOVES.SCISSORS && aiMove === MOVES.PAPER) {
+                return rules.scissorsToPaper ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+            }
+            if (playerMove === MOVES.PAPER && aiMove === MOVES.SCISSORS) { // 反向情况
+                return rules.scissorsToPaper ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+            }
         }
     };
 
@@ -961,13 +978,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const aiMove = levelConfig.ai(gameData, levelConfig); 
         
         if (levelConfig.id === "4-2") {
-            currentRulesForThisTurn = levelConfig.currentRules; 
+            currentRulesForThisTurn = gameData.aiState.ruleState.currentRules; 
             if (gameData.resultHistory.length > 0) { 
                 const prevRoundData = gameData.resultHistory[gameData.resultHistory.length-1];
                 if(prevRoundData && prevRoundData.rules){
                     let ruleText = "上局规则: ";
-                    const ruleEntries = Object.entries(prevRoundData.rules)
-                        .map(([beaten, beater]) => `${MOVE_EMOJI[beater]}胜${MOVE_EMOJI[beaten]}`);
+                    const ruleEntries = Object.entries(prevRoundData.rules).map(([key, value]) => {
+                        if (key === 'rockToScissors') return `${MOVE_EMOJI.rock} ${value ? '胜' : '负'} ${MOVE_EMOJI.scissors}`;
+                        if (key === 'paperToRock') return `${MOVE_EMOJI.paper} ${value ? '胜' : '负'} ${MOVE_EMOJI.rock}`;
+                        if (key === 'scissorsToPaper') return `${MOVE_EMOJI.scissors} ${value ? '胜' : '负'} ${MOVE_EMOJI.paper}`;
+                    }).filter(Boolean);
                     currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
                 } else {
