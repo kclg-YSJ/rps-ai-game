@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const determineWinner = (playerMove, aiMove, rules = null) => {
+        if (playerMove === aiMove) return RESULTS.TIE;
         if (!rules) { 
-            if (playerMove === aiMove) return RESULTS.TIE;
             if (
                 (playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) ||
                 (playerMove === MOVES.PAPER && aiMove === MOVES.ROCK) ||
@@ -106,10 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return RESULTS.PLAYER_WIN;
             }
             return RESULTS.AI_WIN;
-        } else { 
-            if (playerMove === aiMove) return RESULTS.TIE;
-            if (rules[playerMove] === aiMove) return RESULTS.PLAYER_WIN; 
-            return RESULTS.AI_WIN;
+        } else {
+            if(playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) return rules.rockToScissors?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
+            else if(playerMove === MOVES.PAPER && aiMove === MOVES.ROCK) return rules.paperToRock?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
+            else if(playerMove === MOVES.SCISSORS && aiMove === MOVES.PAPER) return rules.scissorsToPaper?RESULTS.PLAYER_WIN:RESULTS.AI_WIN;
         }
     };
 
@@ -371,28 +371,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return getRandomElement(possibleMoves.length > 0 ? possibleMoves : Object.values(MOVES));
         },
         "4-2": (gameData, levelConfig) => { // 规则变幻师
-            if (!gameData.aiState.cycle) { 
-                gameData.aiState.cycle = [MOVES.ROCK, MOVES.PAPER, MOVES.SCISSORS];
-                gameData.aiState.cycleIndex = 0;
-                const ruleSet1 = { [MOVES.ROCK]: MOVES.SCISSORS, [MOVES.PAPER]: MOVES.ROCK, [MOVES.SCISSORS]: MOVES.PAPER }; 
-                const ruleSet2 = { [MOVES.ROCK]: MOVES.PAPER, [MOVES.PAPER]: MOVES.SCISSORS, [MOVES.SCISSORS]: MOVES.ROCK }; 
-
-                gameData.aiState.availableRuleSets = [ruleSet1, ruleSet2];
-                gameData.aiState.currentRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
+            if (!gameData.aiState.ruleState) { 
+                gameData.aiState.ruleState={
+                    ruleKeys: ['rockToScissors', 'scissorsToPaper', 'paperToRock'],
+                    currentRules: {
+                        rockToScissors: false,
+                        scissorsToPaper: false,
+                        paperToRock: false
+                    },
+                    lastInvertedKey: null,
+                    cycleIndex:0,
+                    cycle:[MOVES.ROCK,MOVES.PAPER,MOVES.SCISSORS]
+                }
             }
-            
-            const lastRuleSet = gameData.aiState.currentRuleSet;
-            let newRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
-            let attempts = 0;
-            while (JSON.stringify(newRuleSet) === JSON.stringify(lastRuleSet) && gameData.aiState.availableRuleSets.length > 1 && attempts < 10) { 
-                newRuleSet = getRandomElement(gameData.aiState.availableRuleSets);
-                attempts++;
-            }
-            gameData.aiState.currentRuleSet = newRuleSet;
-            levelConfig.currentRules = newRuleSet; 
-
-            const move = gameData.aiState.cycle[gameData.aiState.cycleIndex];
-            gameData.aiState.cycleIndex = (gameData.aiState.cycleIndex + 1) % gameData.aiState.cycle.length;
+            const keyToInvert=getRandomElement(gameData.aiState.ruleState.ruleKeys.filter(k=>k!==gameData.aiState.ruleState.lastInvertedKey));
+            gameData.aiState.ruleState.currentRules[keyToInvert]=!gameData.aiState.ruleState.currentRules[keyToInvert];
+            gameData.aiState.ruleState.lastInvertedKey=keyToInvert;
+            const move = gameData.aiState.ruleState.cycle[gameData.aiState.ruleState.cycleIndex];
+            gameData.aiState.ruleState.cycleIndex = (gameData.aiState.ruleState.cycleIndex + 1) % gameData.aiState.ruleState.cycle.length;
             return move;
         },
         "4-3": (gameData, levelConfig) => { // 嘲讽篡改者
@@ -965,21 +961,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const aiMove = levelConfig.ai(gameData, levelConfig); 
         
         if (levelConfig.id === "4-2") {
-             currentRulesForThisTurn = levelConfig.currentRules; 
-             if (gameData.resultHistory.length > 0) { 
+            currentRulesForThisTurn = levelConfig.currentRules; 
+            if (gameData.resultHistory.length > 0) { 
                 const prevRoundData = gameData.resultHistory[gameData.resultHistory.length-1];
                 if(prevRoundData && prevRoundData.rules){
                     let ruleText = "上局规则: ";
                     const ruleEntries = Object.entries(prevRoundData.rules)
-                                          .map(([beaten, beater]) => `${MOVE_EMOJI[beater]}胜${MOVE_EMOJI[beaten]}`);
+                        .map(([beaten, beater]) => `${MOVE_EMOJI[beater]}胜${MOVE_EMOJI[beaten]}`);
                     currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
                 } else {
                     currentRulesDisplay.style.display = 'none';
                 }
-             } else { 
+            } else { 
                 currentRulesDisplay.style.display = 'none';
-             }
+            }
         } else {
             currentRulesDisplay.style.display = 'none';
         }
