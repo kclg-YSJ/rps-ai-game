@@ -984,9 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(prevRoundData && prevRoundData.rules){
                     let ruleText = "上局规则: ";
                     const ruleEntries = Object.entries(prevRoundData.rules).map(([key, value]) => {
-                        if (key === 'rockToScissors') return `${MOVE_EMOJI.rock} ${value ? '胜' : '负'} ${MOVE_EMOJI.scissors}`;
-                        if (key === 'paperToRock') return `${MOVE_EMOJI.paper} ${value ? '胜' : '负'} ${MOVE_EMOJI.rock}`;
-                        if (key === 'scissorsToPaper') return `${MOVE_EMOJI.scissors} ${value ? '胜' : '负'} ${MOVE_EMOJI.paper}`;
+                        if (key === 'rockToScissors') return `${MOVE_EMOJI.rock} ${value ? '负' : '胜'} ${MOVE_EMOJI.scissors}`;
+                        if (key === 'paperToRock') return `${MOVE_EMOJI.paper} ${value ? '负' : '胜'} ${MOVE_EMOJI.rock}`;
+                        if (key === 'scissorsToPaper') return `${MOVE_EMOJI.scissors} ${value ? '负' : '胜'} ${MOVE_EMOJI.paper}`;
                     }).filter(Boolean);
                     currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
