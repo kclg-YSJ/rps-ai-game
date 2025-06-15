@@ -108,24 +108,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return RESULTS.AI_WIN;
         } else {
             if (playerMove === MOVES.ROCK && aiMove === MOVES.SCISSORS) {
-                return rules.scissorsBeatsRock ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+                return rules.scissorsBeatsRock ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
             }
             if (playerMove === MOVES.SCISSORS && aiMove === MOVES.ROCK) { // 反向情况
-                return rules.scissorsBeatsRock ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+                return rules.scissorsBeatsRock ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
             }
     
             if (playerMove === MOVES.PAPER && aiMove === MOVES.ROCK) {
-                return rules.rockBeatsPaper ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+                return rules.rockBeatsPaper ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
             }
             if (playerMove === MOVES.ROCK && aiMove === MOVES.PAPER) { // 反向情况
-                return rules.rockBeatsPaper ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+                return rules.rockBeatsPaper ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
             }
     
             if (playerMove === MOVES.SCISSORS && aiMove === MOVES.PAPER) {
-                return rules.paperBeatsScissors ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
+                return rules.paperBeatsScissors ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
             }
             if (playerMove === MOVES.PAPER && aiMove === MOVES.SCISSORS) { // 反向情况
-                return rules.paperBeatsScissors ? RESULTS.AI_WIN : RESULTS.PLAYER_WIN;
+                return rules.paperBeatsScissors ? RESULTS.PLAYER_WIN : RESULTS.AI_WIN;
             }
         }
     };
@@ -982,9 +982,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(currentRulesForThisTurn){
                     let ruleText = "上局规则: ";
                     const ruleEntries = Object.entries(currentRulesForThisTurn).map(([key, value]) => {
-                        if (key === 'scissorsBeatsRock') return `${MOVE_EMOJI.rock} ${value ? '胜' : '负'} ${MOVE_EMOJI.scissors}`;
-                        if (key === 'rockBeatsPaper') return `${MOVE_EMOJI.paper} ${value ? '胜' : '负'} ${MOVE_EMOJI.rock}`;
-                        if (key === 'paperBeatsScissors') return `${MOVE_EMOJI.scissors} ${value ? '胜' : '负'} ${MOVE_EMOJI.paper}`;
+                        if (key === 'scissorsBeatsRock') return `${MOVE_EMOJI.rock} ${value ? '负' : '胜'} ${MOVE_EMOJI.scissors}`;
+                        if (key === 'rockBeatsPaper') return `${MOVE_EMOJI.paper} ${value ? '负' : '胜'} ${MOVE_EMOJI.rock}`;
+                        if (key === 'paperBeatsScissors') return `${MOVE_EMOJI.scissors} ${value ? '负' : '胜'} ${MOVE_EMOJI.paper}`;
                     }).filter(Boolean);
                     currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
