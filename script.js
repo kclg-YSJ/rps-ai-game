@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeTakenValueEl = document.getElementById('time-taken-value'); 
     const nextLevelBtn = document.getElementById('next-level-btn');
     const replayLevelBtn = document.getElementById('replay-level-btn');
+    const scoreParagraph = document.getElementById("modal-score");
+    const aiBeaten=document.getElementById("ai-beaten");
+    const aiBeatenValue=document.getElementById("ai-beaten-value");
     
     const hintModal = document.getElementById('hint-modal');
     const hintTextContent = document.getElementById('hint-text-content');
@@ -439,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!gameData.aiState.bossLogic) {
                 gameData.aiState.bossLogic = {
                     ruleChangeCounter: 0, 
+                    aiBeatenValue: 0,
                     currentRuleAiKey: null,
                     currentRuleAiFn: null,
                     currentRuleAiName: null, 
@@ -470,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newAiKey === "3-4") { 
                     gameData.aiState.subAiState.netWins = { rock: 0, paper: 0, scissors: 0 };
                 }
+                gameData.aiState.bossLogic.aiBeatenValue++;
             }
             bossState.ruleChangeCounter++;
 
@@ -515,8 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bossTimerValue <= 0) {
                 clearInterval(bossTimerInterval);
                 timerDisplay.textContent = "时间到!";
-                isGameInputDisabled = true; 
-                choiceBtns.forEach(btn => btn.disabled = true);
+                endLevel();
             }
         }, 1000);
     };
@@ -705,10 +709,10 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             id: "5-1", chapter: "第五章：最终挑战", name: "千面智械", 
             description: "终极考验，集大成之作。", 
-            hint: "终极Boss！它会从之前所有AI（除了历史复现者AI 4-4 和它自己）的规则中随机选择一个来行动，并且每30轮更换一次规则。当规则更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI基于当前的完整对局历史重新评估或初始化（例如，“从众者”会基于当前完整历史，“胜者为王”的胜局计数会从0开始，“概率操纵师”的AI手势净胜场会从0开始）。最后30轮，你将面临出拳时间限制，从初始的30秒逐渐缩减到最终的5秒！",
+            hint: "终极Boss！你需要在总时间限制内连续挑战10个随机AI对手（除了历史复现者和它自己）。每个对手30回合，必须达到该AI的过关条件才能进入下一阶段。如果某个阶段失败，该阶段将重置（重新开始30回合）。注意：总时间不会重置！当对手更换时，如果新的子AI依赖历史统计数据（如出拳频率、胜率等），这些统计量会为该子AI初始化。",
             totalRounds: 300, 
-            winCondition: (s) => s.wins >= 200,
-            winText: "300局200胜",
+            winCondition: () => gameData.aiState.bossLogic.aiBeatenValue === 10,
+            winText: "完成10个AI对手",
             ai: aiFunctions["5-1"],
             featureFlags: { bossTimer: true }
         },
@@ -835,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3>${level.name} <span style="font-size:0.8em; color:#777;">(${level.id})</span></h3>
                 <p>${level.description}</p> 
                 <p class="win-req">要求: ${level.winText}</p>
-                <div class="best-score-display">最佳: ${bestScoreHtml}</div>
+                ${level.id==="5-1" ? "" : `<div class="best-score-display">最佳: ${bestScoreHtml}</div>`}
             `;
             card.addEventListener('click', () => {
                 if (level.unlocked) {
@@ -1093,10 +1097,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalTitle.textContent = playerWon ? "关卡通过!" : "挑战失败";
         modalMessage.textContent = playerWon ? `恭喜你战胜了 ${levelConfig.name}!` : `再接再厉，下次一定能打败 ${levelConfig.name}!`;
-        modalWins.textContent = gameData.wins;
-        modalTies.textContent = gameData.ties;
-        modalLosses.textContent = gameData.losses;
-        timeTakenValueEl.textContent = formatTime(timeTakenMs);
+        if(levelConfig.id==="5-1"){
+            scoreParagraph.style.display="none";
+            aiBeaten.style.display="";
+            aiBeatenValue.textContent=0;
+            timeTakenValueEl.textContent = formatTime(timeTakenMs);
+        }
+        else{
+            scoreParagraph.style.display="";
+            aiBeaten.style.display="none";
+            modalWins.textContent = gameData.wins;
+            modalTies.textContent = gameData.ties;
+            modalLosses.textContent = gameData.losses;
+            timeTakenValueEl.textContent = formatTime(timeTakenMs);
+        }
 
         const roundPlays = gameData.resultHistory.map(r => ({player: r.playerMove, ai: r.aiMove}));
         saveCompletedGame(levelConfig, roundPlays);
