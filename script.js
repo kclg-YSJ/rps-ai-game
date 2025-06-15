@@ -982,11 +982,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(currentRulesForThisTurn){
                     let ruleText = "上局规则: ";
                     const ruleEntries = Object.entries(currentRulesForThisTurn).map(([key, value]) => {
-                        if (key === 'scissorsBeatsRock') return `${MOVE_EMOJI.rock} ${value ? '负' : '胜'} ${MOVE_EMOJI.scissors}`;
-                        if (key === 'rockBeatsPaper') return `${MOVE_EMOJI.paper} ${value ? '负' : '胜'} ${MOVE_EMOJI.rock}`;
-                        if (key === 'paperBeatsScissors') return `${MOVE_EMOJI.scissors} ${value ? '负' : '胜'} ${MOVE_EMOJI.paper}`;
+                        let text="";
+                        if (key === 'scissorsBeatsRock') text=`${MOVE_EMOJI.rock} ${value ? '负' : '胜'} ${MOVE_EMOJI.scissors}`;
+                        if (key === 'rockBeatsPaper') text=`${MOVE_EMOJI.paper} ${value ? '负' : '胜'} ${MOVE_EMOJI.rock}`;
+                        if (key === 'paperBeatsScissors') text=`${MOVE_EMOJI.scissors} ${value ? '负' : '胜'} ${MOVE_EMOJI.paper}`;
+                        if(key===gameData.aiState.ruleState.lastInvertedKey) return `<span style="background-color: #f39c12; padding: 2px 6px; border-radius: 4px;">${text}</span>`;
+                        return text;
                     }).filter(Boolean);
-                    currentRulesDisplay.textContent = ruleText + ruleEntries.join(', ');
+
+                    currentRulesDisplay.innerHTML = ruleText + ruleEntries.join(', ');
                     currentRulesDisplay.style.display = 'block';
                 } else {
                     currentRulesDisplay.style.display = 'none';
