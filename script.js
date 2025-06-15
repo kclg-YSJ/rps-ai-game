@@ -630,8 +630,8 @@ document.addEventListener('DOMContentLoaded', () => {
             description: "它关注你的整体偏好。", 
             hint: "这个AI会统计你到目前为止出过的所有手势，然后出克制你最常出手势的拳。如果最常出的手势有多个（数量相同），它会从中随机选择一个来克制。",
             totalRounds: 20, 
-            winCondition: (s) => (s.wins + s.ties) >= 19 && s.wins >=14 ,
-            winText: "20局, (胜+平)≥19, 且胜≥14",
+            winCondition: (s) => (s.wins + s.ties) >= 17 && s.wins >=12 ,
+            winText: "20局, (胜+平)≥17, 且胜≥12",
             ai: aiFunctions["3-1"] 
         },
         { 
@@ -639,8 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
             description: "它倾向于使用成功的策略。", 
             hint: "这个AI会统计自己用哪种手势在本关卡中获胜的次数最多，然后倾向于出那种手势。如果多种手势获胜次数相同，或者还没有用任何手势赢过，则随机出拳。",
             totalRounds: 20, 
-            winCondition: (s) => (s.wins + s.ties) >= 17,
-            winText: "20局17平(胜+平)",
+            winCondition: (s) => (s.wins + s.ties) >= 19,
+            winText: "20局19平(胜+平)",
             ai: aiFunctions["3-2"] 
         },
         { 
